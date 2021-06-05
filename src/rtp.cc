@@ -15,13 +15,6 @@ RTP_Header::RTP_Header(
     const uint32_t __timestamp,
     //byte 8-11
     const uint32_t __ssrc)
-
-/*: version(__version), padding(__padding), extension(__extension), csrcCount(__csrcCount),
-      marker(__marker), payloadType(__payloadType),
-      seq(__seq),
-      timestamp(__timestamp),
-      ssrc(__ssrc)*/
-
 {
     bzero(this->header, sizeof(this->header));
 
@@ -59,23 +52,4 @@ RTP_Packet::RTP_Packet(const RTP_Header &rtpHeader, const uint8_t *data, const s
     memcpy(this->RTP_Payload + RTP_HEADER_SIZE + bias, data, std::min(dataSize, RTP_MAX_DATA_SIZE - bias));
 }
 
-/*void RTP_Packet::writeData(const uint8_t *data, const size_t dataSize, const size_t bias = 0)
-{
-    this->packetLen = std::max(this->packetLen, );
-    memcpy(this->getPayload() + RTP_HEADER_SIZE + bias, data, std::min(dataSize, RTP_MAX_DATA_SIZE - bias));
-}*/
-
-ssize_t RTP_Packet::rtp_sendto(int sockfd, /*const RTP_Packet &rtpPacket,*/ int flags, const sockaddr *to) { return sendto(sockfd, this->getRealPacket(), this->getPacketLen(), flags, to, sizeof(sockaddr)); }
-
-/*RTP::RTP(const sa_family_t __af, const char *__IP, const uint16_t __port)
-{
-    this->addr.sin_family = __af;
-    this->addr.sin_port = htons(__port);
-    inet_pton(__af, __IP, &(this->addr.sin_addr));
-}
-
-ssize_t RTP::rtp_sendto(int sockfd, const RTP_Packet &rtpPacket, int flags, const sockaddr *to)
-{
-    socklen_t addrLen = sizeof(sockaddr);
-    return sendto(sockfd, rtpPacket.getRealPacket(), rtpPacket.getPacketLen(), flags, to, addrLen);
-}*/
+ssize_t RTP_Packet::rtp_sendto(int sockfd, int flags, const sockaddr *to) { return sendto(sockfd, this->getRealPacket(), this->getPacketLen(), flags, to, sizeof(sockaddr)); }

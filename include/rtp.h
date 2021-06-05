@@ -20,26 +20,6 @@ constexpr size_t RTP_MAX_PACKET_LEN = RTP_MAX_DATA_SIZE + RTP_HEADER_SIZE + FU_S
 class RTP_Header
 {
 private:
-    /************************************************/
-    //byte 0:
-    /*uint8_t version;
-    uint8_t padding;
-    uint8_t extension;
-    uint8_t csrcCount;*/
-
-    //byte 1:
-    /*uint8_t marker;
-    uint8_t payloadType;*/
-
-    //byte 2, 3:
-    //uint16_t seq;
-
-    //byte 4-7:
-    //uint32_t timestamp;
-
-    //byte 8-11:
-    //uint32_t ssrc;
-    /************************************************/
     uint8_t header[12];
 
 public:

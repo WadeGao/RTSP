@@ -1,4 +1,5 @@
 #include "H264.h"
+#include <algorithm>
 
 const uint8_t startCode3[3] = {0, 0, 1};
 const uint8_t startCode4[4] = {0, 0, 0, 1};
@@ -40,7 +41,7 @@ ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen)
     auto isThreeBytesStartCode = [](const uint8_t *buffer, const size_t len) -> bool
     {
         assert(len >= 3);
-        return (buffer[0] == 0 && buffer[1] == 0 && buffer[2] == 1);
+        return (buffer[0] == 0x00 && buffer[1] == 0x00 && buffer[2] == 0x01);
     };
 
     if ((ntohl(*((uint32_t *)this->curFilePtr)) != 1) && !isThreeBytesStartCode(this->curFilePtr, this->mappedFilePtr + this->fileSize - this->curFilePtr))
@@ -48,8 +49,8 @@ ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen)
         fprintf(stderr, "H264Parser::getOneFrame() failed: H264 file not start with startcode\n");
         return -1;
     }
-    const auto nextStartCode3 = search(this->curFilePtr + 3, this->mappedFilePtr + this->fileSize, startCode3, startCode3 + sizeof(startCode3));
-    const auto nextStartCode4 = search(this->curFilePtr + 3, this->mappedFilePtr + this->fileSize, startCode4, startCode4 + sizeof(startCode4));
+    const auto nextStartCode3 = std::search(this->curFilePtr + 3, this->mappedFilePtr + this->fileSize, startCode3, startCode3 + 3);
+    const auto nextStartCode4 = std::search(this->curFilePtr + 3, this->mappedFilePtr + this->fileSize, startCode4, startCode4 + 4);
 
     if (nextStartCode3 - this->mappedFilePtr == this->fileSize && nextStartCode4 == nextStartCode3)
     {
@@ -85,7 +86,7 @@ ssize_t H264Parser::pushStream(int sockfd, RTP_Header &rtpHeader, const uint8_t 
             return -1;
         }
         sentBytes += ret;
-        seq++;
+        rtpHeader.setSeq(++seq);
         return sentBytes;
     }
     const size_t packetNum = dataSize / RTP_MAX_DATA_SIZE;
@@ -93,12 +94,13 @@ ssize_t H264Parser::pushStream(int sockfd, RTP_Header &rtpHeader, const uint8_t 
     size_t pos = 1;
     for (size_t i = 0; i < packetNum; i++)
     {
-        auto curHeader = rtpHeader;
-        curHeader.setSeq(seq);
-        RTP_Packet curPack(curHeader, data + pos, RTP_MAX_DATA_SIZE, FU_Size);
+        rtpHeader.setSeq(seq++);
+        RTP_Packet curPack(rtpHeader, data + pos, RTP_MAX_DATA_SIZE, FU_Size);
+
         auto payload = curPack.getPayload();
         payload[0] = (naluHeader & NALU_NRI_MASK) | SET_FU_A_MASK;
         payload[1] = naluHeader & NALU_TYPE_MASK;
+
         if (!i)
             payload[1] |= FU_S_MASK;
         else if (i == packetNum - 1 && remainPacketSize == 0)
@@ -110,15 +112,15 @@ ssize_t H264Parser::pushStream(int sockfd, RTP_Header &rtpHeader, const uint8_t 
             fprintf(stderr, "RTP_Packet::rtp_sendto() failed: %s\n", strerror(errno));
             return -1;
         }
-        seq++;
+        //seq++;
         sentBytes += ret;
         pos += RTP_MAX_DATA_SIZE;
     }
     if (remainPacketSize > 0)
     {
-        auto curHeader = rtpHeader;
-        curHeader.setSeq(seq);
-        RTP_Packet curPack(curHeader, data + pos, remainPacketSize, FU_Size);
+        rtpHeader.setSeq(seq++);
+        RTP_Packet curPack(rtpHeader, data + pos, remainPacketSize, FU_Size);
+
         auto payload = curPack.getPayload();
         payload[0] = (naluHeader & NALU_NRI_MASK) | SET_FU_A_MASK;
         payload[1] = (naluHeader & NALU_TYPE_MASK) | FU_E_MASK;
@@ -128,10 +130,7 @@ ssize_t H264Parser::pushStream(int sockfd, RTP_Header &rtpHeader, const uint8_t 
             fprintf(stderr, "RTP_Packet::rtp_sendto() failed: %s\n", strerror(errno));
             return -1;
         }
-        seq++;
         sentBytes += ret;
     }
-    //TODO:怎么直接更改序列号
-    rtpHeader.setSeq(seq);
     return sentBytes;
 }
