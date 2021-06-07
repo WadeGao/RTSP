@@ -6,22 +6,29 @@ const uint8_t startCode4[4] = {0, 0, 0, 1};
 
 H264Parser::H264Parser(const char *filename)
 {
-    this->fd = open(filename, O_RDONLY);
-    assert(this->fd > 0);
+    auto h264FileDescriptor = open(filename, O_RDONLY);
+    assert(h264FileDescriptor > 0);
     struct stat fileMetaData;
-    if (fstat(this->fd, &fileMetaData) < 0)
+    if (fstat(h264FileDescriptor, &fileMetaData) < 0)
     {
         fprintf(stderr, "fstat() failed: %s\n", strerror(errno));
         _exit(EXIT_FAILURE);
     }
-    this->fileSize = fileMetaData.st_size;
-    this->mappedFilePtr = reinterpret_cast<uint8_t *>(mmap(nullptr, this->fileSize, PROT_READ, MAP_SHARED, this->fd, 0));
-    if (this->mappedFilePtr == MAP_FAILED)
+
+    auto mapPtr = reinterpret_cast<uint8_t *>(mmap(nullptr, fileMetaData.st_size, PROT_READ, MAP_SHARED, h264FileDescriptor, 0));
+    if (mapPtr == MAP_FAILED)
     {
         fprintf(stderr, "mmap() failed: %s\n", strerror(errno));
         _exit(EXIT_FAILURE);
     }
-    this->curFilePtr = this->mappedFilePtr;
+
+    /*for (int i = 0; i < 32; i++)
+        printf("0x%X ", *(mapPtr + i));
+    printf("\n");*/
+
+    this->fileSize = fileMetaData.st_size;
+    this->fd = h264FileDescriptor;
+    this->curFilePtr = this->mappedFilePtr = mapPtr;
 }
 
 H264Parser::~H264Parser()
@@ -38,10 +45,10 @@ H264Parser::~H264Parser()
 ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen)
 {
     assert(this->fd > 0);
-    auto isThreeBytesStartCode = [](const uint8_t *buffer, const size_t len) -> bool
+    auto isThreeBytesStartCode = [](const uint8_t *const buffer, const size_t len) -> bool
     {
         assert(len >= 3);
-        return (buffer[0] == 0x00 && buffer[1] == 0x00 && buffer[2] == 0x01);
+        return ((buffer[0] == 0x00) && (buffer[1] == 0x00) && (buffer[2] == 0x01));
     };
 
     if ((ntohl(*((uint32_t *)this->curFilePtr)) != 1) && !isThreeBytesStartCode(this->curFilePtr, this->mappedFilePtr + this->fileSize - this->curFilePtr))
@@ -49,8 +56,9 @@ ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen)
         fprintf(stderr, "H264Parser::getOneFrame() failed: H264 file not start with startcode\n");
         return -1;
     }
-    const auto nextStartCode3 = std::search(this->curFilePtr + 3, this->mappedFilePtr + this->fileSize, startCode3, startCode3 + 3);
-    const auto nextStartCode4 = std::search(this->curFilePtr + 3, this->mappedFilePtr + this->fileSize, startCode4, startCode4 + 4);
+
+    const auto nextStartCode3 = std::search(this->curFilePtr + 3, this->mappedFilePtr + this->fileSize, startCode3, startCode3 + sizeof(startCode3));
+    const auto nextStartCode4 = std::search(this->curFilePtr + 3, this->mappedFilePtr + this->fileSize, startCode4, startCode4 + sizeof(startCode4));
 
     if (nextStartCode3 - this->mappedFilePtr == this->fileSize && nextStartCode4 == nextStartCode3)
     {
@@ -58,15 +66,23 @@ ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen)
         return -1;
     }
 
-    const auto startCode = std::min(nextStartCode3, nextStartCode4);
-    const size_t frameSize = startCode - this->curFilePtr;
+    const size_t frameSize = std::min(nextStartCode3, nextStartCode4) - this->curFilePtr;
+
     if (bufferLen < frameSize)
     {
         fprintf(stderr, "H264Parser::getOneFrame() failed: provided buffer can't hold one frame\n");
         return -1;
     }
+    fprintf(stdout, "current Frame Size: %ld\n", frameSize);
     memcpy(frameBuffer, this->curFilePtr, frameSize);
+
+    /*uint8_t *pos = this->curFilePtr;
+    for (size_t i = 0; i < frameSize; i++)
+        fprintf(stdout, "0x%X ", *pos++);
+    printf("\n");*/
+
     this->curFilePtr += frameSize;
+
     return frameSize;
 }
 
