@@ -1,47 +1,53 @@
+/*
+ * @Author: your name
+ * @Date: 2021-06-07 16:46:34
+ * @LastEditTime: 2021-06-09 14:08:17
+ * @LastEditors: Please set LastEditors
+ * @Description: In User Settings Edit
+ * @FilePath: /rtsp/src/rtp.cc
+ */
 #include "rtp.h"
 
 RTP_Header::RTP_Header(
     //byte 0
-    const uint8_t __version,
-    const uint8_t __padding,
-    const uint8_t __extension,
-    const uint8_t __csrcCount,
+    const uint8_t _version,
+    const uint8_t _padding,
+    const uint8_t _extension,
+    const uint8_t _csrcCount,
     //byte 1
-    const uint8_t __marker,
-    const uint8_t __payloadType,
+    const uint8_t _marker,
+    const uint8_t _payloadType,
     //byte 2, 3
-    const uint16_t __seq,
+    const uint16_t _seq,
     //byte 4-7
-    const uint32_t __timestamp,
+    const uint32_t _timestamp,
     //byte 8-11
-    const uint32_t __ssrc)
+    const uint32_t _ssrc)
 {
-    bzero(this->header, sizeof(this->header));
-
-    uint16_t *pSeq = reinterpret_cast<uint16_t *>(&this->header[2]);
-    uint32_t *pTimeStamp = reinterpret_cast<uint32_t *>(&this->header[4]);
-    uint32_t *pSSRC = reinterpret_cast<uint32_t *>(&this->header[8]);
-
-    this->header[0] = (__csrcCount & 0x0F) | (__extension << 4) | (__padding << 5) | (__version << 6);
-    this->header[1] = (__marker << 7) | (__payloadType & 0x7F);
-    *pSeq = htons(__seq);
-    *pTimeStamp = htonl(__timestamp);
-    *pSSRC = htonl(__ssrc);
+    this->version = _version;
+    this->padding = _padding;
+    this->extension = _extension;
+    this->csrcCount = _csrcCount;
+    this->marker = _marker;
+    this->payloadType = _payloadType;
+    this->seq = htons(_seq);
+    this->timestamp = htonl(_timestamp);
+    this->ssrc = htonl(_ssrc);
 }
 
-RTP_Header::RTP_Header(const uint16_t __seq, const uint32_t __timestamp, const uint32_t __ssrc)
+RTP_Header::RTP_Header(const uint16_t _seq, const uint32_t _timestamp, const uint32_t _ssrc)
 {
-    bzero(this->header, sizeof(this->header));
+    this->version = RTP_VERSION;
+    this->padding = 0;
+    this->extension = 0;
+    this->csrcCount = 0;
 
-    uint16_t *pSeq = reinterpret_cast<uint16_t *>(&this->header[2]);
-    uint32_t *pTimeStamp = reinterpret_cast<uint32_t *>(&this->header[4]);
-    uint32_t *pSSRC = reinterpret_cast<uint32_t *>(&this->header[8]);
+    this->marker = 0;
+    this->payloadType = RTP_PAYLOAD_TYPE_H264;
 
-    this->header[0] = RTP_VERSION << 6;
-    this->header[1] = RTP_PAYLOAD_TYPE_H264 & 0x7F;
-    *pSeq = htons(__seq);
-    *pTimeStamp = htonl(__timestamp);
-    *pSSRC = htonl(__ssrc);
+    this->seq = htons(_seq);
+    this->timestamp = htonl(_timestamp);
+    this->ssrc = htonl(_ssrc);
 }
 
 RTP_Packet::RTP_Packet(const RTP_Header &rtpHeader) : header(rtpHeader), packetLen(RTP_HEADER_SIZE) { memcpy(this->RTP_Payload, rtpHeader.getHeader(), RTP_HEADER_SIZE); }

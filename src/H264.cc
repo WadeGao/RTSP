@@ -88,7 +88,7 @@ ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen)
 
 ssize_t H264Parser::pushStream(int sockfd, RTP_Header &rtpHeader, const uint8_t *data, const size_t dataSize, const sockaddr *to)
 {
-    const uint8_t naluHeader = *data;
+    const uint8_t naluHeader = data[0];
     ssize_t sentBytes = 0;
     uint16_t seq = rtpHeader.getSeq();
 

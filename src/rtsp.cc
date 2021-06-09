@@ -93,7 +93,7 @@ void RTSP::Start(const int ssrcNum, const char *sessionID, const int timeout, co
         }
         char IPv4[16]{0};
         fprintf(stdout, "Connection from %s:%d\n", inet_ntop(AF_INET, &cliAddr.sin_addr, IPv4, sizeof(IPv4)), ntohs(cliAddr.sin_port));
-        this->serveClient(cli_sockfd, cliAddr, ssrcNum, sessionID, timeout, fps);
+        this->serveClient(cli_sockfd, cliAddr, this->servRtpSockfd, ssrcNum, sessionID, timeout, fps);
     }
 }
 
@@ -107,7 +107,7 @@ char *RTSP::lineParser(char *src, char *line)
     return (src + 1);
 }
 
-void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, const int ssrcNum, const char *sessionID, const int timeout, const float fps)
+void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, const int ssrcNum, const char *sessionID, const int timeout, const float fps)
 {
     char method[10]{0};
     char url[100]{0};
@@ -122,7 +122,7 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, const int ssrcN
         if (recvLen <= 0)
             break;
         recvBuf[recvLen] = 0;
-        fprintf(stdout, "--------------- C->S --------------\n");
+        fprintf(stdout, "--------------- [C->S] --------------\n");
         fprintf(stdout, "%s", recvBuf);
 
         char *bufferPtr = this->lineParser(recvBuf, line);
@@ -155,14 +155,19 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, const int ssrcN
 
         if (!strcmp(method, "OPTIONS"))
             this->replyCmd_OPTIONS(sendBuf, sizeof(sendBuf), cseq);
-        if (!strcmp(method, "DESCRIBE"))
+        else if (!strcmp(method, "DESCRIBE"))
             this->replyCmd_DESCRIBE(sendBuf, sizeof(sendBuf), cseq, url);
-        if (!strcmp(method, "SETUP"))
+        else if (!strcmp(method, "SETUP"))
             this->replyCmd_SETUP(sendBuf, sizeof(sendBuf), cseq, this->cliRtpPort, ssrcNum, sessionID, timeout);
-        if (!strcmp(method, "PLAY"))
+        else if (!strcmp(method, "PLAY"))
             this->replyCmd_PLAY(sendBuf, sizeof(sendBuf), cseq, sessionID, timeout);
+        else
+        {
+            fprintf(stderr, "Parse method error\n");
+            break;
+        }
 
-        fprintf(stdout, "--------------- S->C --------------\n");
+        fprintf(stdout, "--------------- [S->C] --------------\n");
         fprintf(stdout, "%s", sendBuf);
         if (send(clientfd, sendBuf, strlen(sendBuf), 0) < 0)
         {
@@ -174,10 +179,21 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, const int ssrcN
         {
             char IPv4[16]{0};
             inet_ntop(AF_INET, &cliAddr.sin_addr, IPv4, sizeof(IPv4));
-            fprintf(stdout, "start send stream to %s:%d\n", IPv4, ntohs(cliAddr.sin_port));
+
             auto frameBuffer = new uint8_t[maxBufferSize]{0};
-            //uint8_t frameBuffer[RTP_MAX_DATA_SIZE]{0};
-            uint32_t seq = 0;
+
+            struct sockaddr_in clientSock;
+            bzero(&clientSock, sizeof(sockaddr_in));
+            clientSock.sin_family = AF_INET;
+            inet_pton(clientSock.sin_family, IPv4, &clientSock.sin_addr);
+            clientSock.sin_port = htons(this->cliRtpPort);
+
+            fprintf(stdout, "start send stream to %s:%d\n", IPv4, ntohs(clientSock.sin_port));
+
+            uint32_t tmpTimeStamp = 0;
+            const uint32_t step = uint32_t(90000 / fps);
+            RTP_Header rtpHeader(0, tmpTimeStamp, ssrcNum);
+
             while (true)
             {
                 auto ret = this->h264File.getOneFrame(frameBuffer, maxBufferSize);
@@ -186,9 +202,9 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, const int ssrcN
                     fprintf(stderr, "RTSP::serveClient() H264::getOneFrame() failed\n");
                     break;
                 }
-                RTP_Header rtpHeader(seq, 0, ssrcNum);
-                this->h264File.pushStream(clientfd, rtpHeader, frameBuffer, ret, (sockaddr *)&cliAddr);
-                seq += uint32_t(90000 / fps);
+                this->h264File.pushStream(rtpFD, rtpHeader, frameBuffer, ret, (sockaddr *)&clientSock);
+                tmpTimeStamp += step;
+                rtpHeader.setTimestamp(tmpTimeStamp);
                 usleep(1000 * 1000 / fps);
             }
             delete[] frameBuffer;

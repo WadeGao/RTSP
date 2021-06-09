@@ -1,3 +1,11 @@
+/*
+ * @Author: your name
+ * @Date: 2021-06-07 16:46:34
+ * @LastEditTime: 2021-06-09 17:14:42
+ * @LastEditors: Please set LastEditors
+ * @Description: In User Settings Edit
+ * @FilePath: /rtsp/src/main.cc
+ */
 #include "rtsp.h"
 
 int main(int argc, char *argv[])
@@ -8,5 +16,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     RTSP rtspServer(argv[1]);
+    //RTSP rtspServer("./test.h264");
     rtspServer.Start(66668899, "4bbbd85c8e", 600, atof(argv[2]));
+    //rtspServer.Start(66668899, "4bbbd85c8e", 600, 25);
 }
