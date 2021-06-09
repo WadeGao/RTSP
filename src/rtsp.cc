@@ -122,7 +122,7 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, const int ssrcN
         if (recvLen <= 0)
             break;
         recvBuf[recvLen] = 0;
-        fprintf(stdout, "---------------C->S--------------\n");
+        fprintf(stdout, "--------------- C->S --------------\n");
         fprintf(stdout, "%s", recvBuf);
 
         char *bufferPtr = this->lineParser(recvBuf, line);
@@ -162,16 +162,16 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, const int ssrcN
         if (!strcmp(method, "PLAY"))
             this->replyCmd_PLAY(sendBuf, sizeof(sendBuf), cseq, sessionID, timeout);
 
-        fprintf(stdout, "---------------S->C--------------\n");
+        fprintf(stdout, "--------------- S->C --------------\n");
         fprintf(stdout, "%s", sendBuf);
         if (send(clientfd, sendBuf, strlen(sendBuf), 0) < 0)
         {
             fprintf(stderr, "RTSP::serveClient() send() failed: %s\n", strerror(errno));
             break;
         }
+
         if (!strcmp(method, "PLAY"))
         {
-
             char IPv4[16]{0};
             inet_ntop(AF_INET, &cliAddr.sin_addr, IPv4, sizeof(IPv4));
             fprintf(stdout, "start send stream to %s:%d\n", IPv4, ntohs(cliAddr.sin_port));

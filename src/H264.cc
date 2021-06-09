@@ -73,7 +73,7 @@ ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen)
         fprintf(stderr, "H264Parser::getOneFrame() failed: provided buffer can't hold one frame\n");
         return -1;
     }
-    fprintf(stdout, "current Frame Size: %ld\n", frameSize);
+    //fprintf(stdout, "current Frame Size: %ld\n", frameSize);
     memcpy(frameBuffer, this->curFilePtr, frameSize);
 
     /*uint8_t *pos = this->curFilePtr;
