@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-06-07 16:46:34
- * @LastEditTime: 2021-06-10 09:48:27
+ * @LastEditTime: 2021-06-10 14:15:24
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /rtsp/src/rtp.cc
@@ -52,7 +52,7 @@ RTP_Header::RTP_Header(const uint16_t _seq, const uint32_t _timestamp, const uin
 
 RTP_Packet::RTP_Packet(const RTP_Header &rtpHeader) : header(rtpHeader) {}
 
-RTP_Packet::RTP_Packet(const RTP_Header &rtpHeader, const uint8_t *data, const size_t dataSize, const size_t bias) : header(rtpHeader) { memcpy(this->RTP_Payload + bias, data, std::min(dataSize, RTP_MAX_DATA_SIZE - bias)); }
+//RTP_Packet::RTP_Packet(const RTP_Header &rtpHeader, const uint8_t *data, const size_t dataSize, const size_t bias) : header(rtpHeader) { memcpy(this->RTP_Payload + bias, data, std::min(dataSize, RTP_MAX_DATA_SIZE - bias)); }
 
 void RTP_Packet::loadData(const uint8_t *data, const size_t dataSize, const size_t bias) { memcpy(this->RTP_Payload + bias, data, std::min(dataSize, RTP_MAX_DATA_SIZE - bias)); }
 

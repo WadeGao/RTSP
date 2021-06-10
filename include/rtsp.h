@@ -1,3 +1,11 @@
+/*
+ * @Author: your name
+ * @Date: 2021-06-07 16:46:34
+ * @LastEditTime: 2021-06-10 14:14:07
+ * @LastEditors: your name
+ * @Description: In User Settings Edit
+ * @FilePath: /rtsp/include/rtsp.h
+ */
 #pragma once
 #include <arpa/inet.h>
 #include <cassert>
@@ -26,7 +34,7 @@ constexpr size_t maxFileNameLen = 128;
 class RTSP
 {
 private:
-    char filename[maxFileNameLen]{0};
+    //char filename[maxFileNameLen]{0};
     H264Parser h264File;
     int servRtspSockfd, servRtpSockfd, servRtcpSockfd;
     int cliRtpPort, cliRtcpPort;

@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-06-07 16:46:34
- * @LastEditTime: 2021-06-10 11:33:41
+ * @LastEditTime: 2021-06-10 13:25:56
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /rtsp/include/rtp.h
@@ -89,7 +89,7 @@ private:
 
 public:
     RTP_Packet(const RTP_Header &rtpHeader);
-    RTP_Packet(const RTP_Header &rtpHeader, const uint8_t *data, const size_t dataSize, const size_t bias = 0);
+    //RTP_Packet(const RTP_Header &rtpHeader, const uint8_t *data, const size_t dataSize, const size_t bias = 0);
 
     void loadData(const uint8_t *data, const size_t dataSize, const size_t bias = 0);
 
