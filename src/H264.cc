@@ -1,5 +1,4 @@
 #include "H264.h"
-#include <algorithm>
 
 const uint8_t startCode3[3] = {0, 0, 1};
 const uint8_t startCode4[4] = {0, 0, 0, 1};
@@ -14,44 +13,62 @@ H264Parser::H264Parser(const char *filename)
         fprintf(stderr, "fstat() failed: %s\n", strerror(errno));
         _exit(EXIT_FAILURE);
     }
-
-    //this->fileSize = fileMetaData.st_size;
     this->fd = h264FileDescriptor;
 }
 
 H264Parser::~H264Parser()
 {
-
     assert(close(this->fd) == 0);
+}
+
+bool H264Parser::isStartCode(const uint8_t *_buffer, const size_t _bufLen, const uint8_t startCodeType)
+{
+    switch (startCodeType)
+    {
+    case 3:
+        assert(_bufLen >= 3);
+        return ((_buffer[0] == 0x00) && (_buffer[1] == 0x00) && (_buffer[2] == 0x01));
+        break;
+    case 4:
+        assert(_bufLen >= 3);
+        return ((_buffer[0] == 0x00) && (_buffer[1] == 0x00) && (_buffer[2] == 0x00) && (_buffer[3] == 0x01));
+        break;
+    default:
+        fprintf(stderr, "static H264Parser::isStartCode() failed: startCodeType error\n");
+        break;
+    }
+    return false;
+}
+
+uint8_t *H264Parser::findNextStartCode(uint8_t *_buffer, const size_t _bufLen)
+{
+    for (size_t i = 0; i < _bufLen - 3; i++)
+    {
+        if (H264Parser::isStartCode(_buffer, _bufLen - i, 3) || H264Parser::isStartCode(_buffer, _bufLen - i, 4))
+            return _buffer;
+        ++_buffer;
+    }
+    return H264Parser::isStartCode(_buffer, 3, 3) ? _buffer : nullptr;
 }
 
 ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen)
 {
     assert(this->fd > 0);
-    auto isThreeBytesStartCode = [](const uint8_t *const buffer, const size_t len) -> bool
-    {
-        assert(len >= 3);
-        return ((buffer[0] == 0x00) && (buffer[1] == 0x00) && (buffer[2] == 0x01));
-    };
     auto readBytes = read(this->fd, frameBuffer, bufferLen);
 
-    if ((ntohl(*((uint32_t *)frameBuffer)) != 1) && !isThreeBytesStartCode(frameBuffer, readBytes - 3))
+    if (!H264Parser::isStartCode(frameBuffer, readBytes - 4, 4) && !H264Parser::isStartCode(frameBuffer, readBytes - 3, 3))
     {
         fprintf(stderr, "H264Parser::getOneFrame() failed: H264 file not start with startcode\n");
         return -1;
     }
 
-    const auto nextStartCode3 = std::search(frameBuffer + 3, frameBuffer + readBytes, startCode3, startCode3 + sizeof(startCode3));
-    const auto nextStartCode4 = std::search(frameBuffer + 3, frameBuffer + readBytes, startCode4, startCode4 + sizeof(startCode4));
-
-    if (nextStartCode3 - frameBuffer == readBytes && nextStartCode4 == nextStartCode3)
+    const auto nextStartCode = H264Parser::findNextStartCode(frameBuffer + 3, readBytes - 3);
+    if (!nextStartCode)
     {
         fprintf(stderr, "H264Parser::getOneFrame() failed: startCode not find\n");
         return -1;
     }
-
-    const size_t frameSize = std::min(nextStartCode3, nextStartCode4) - frameBuffer;
-
+    const size_t frameSize = nextStartCode - frameBuffer;
     if (bufferLen < frameSize)
     {
         fprintf(stderr, "H264Parser::getOneFrame() failed: provided buffer can't hold one frame\n");
@@ -65,23 +82,19 @@ ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen)
 ssize_t H264Parser::pushStream(int sockfd, /*RTP_Header &rtpHeader*/ RTP_Packet &rtpPack, const uint8_t *data, const size_t dataSize, const sockaddr *to, const uint32_t timeStampStep)
 {
     const uint8_t naluHeader = data[0];
-    ssize_t sentBytes = 0;
-    //RTP_Packet rtpPack(rtpHeader);
     if (dataSize <= RTP_MAX_PACKET_LEN)
     {
         rtpPack.loadData(data, dataSize);
         auto ret = rtpPack.rtp_sendto(sockfd, dataSize + RTP_HEADER_SIZE, 0, to, timeStampStep);
         if (ret < 0)
-        {
             fprintf(stderr, "RTP_Packet::rtp_sendto() failed: %s\n", strerror(errno));
-            return -1;
-        }
-        sentBytes += ret;
-        return sentBytes;
+        return ret;
     }
+
     const size_t packetNum = dataSize / RTP_MAX_DATA_SIZE;
     const size_t remainPacketSize = dataSize % RTP_MAX_DATA_SIZE;
     size_t pos = 1;
+    ssize_t sentBytes = 0;
     auto payload = rtpPack.getPayload();
     for (size_t i = 0; i < packetNum; i++)
     {
@@ -98,7 +111,6 @@ ssize_t H264Parser::pushStream(int sockfd, /*RTP_Header &rtpHeader*/ RTP_Packet 
             fprintf(stderr, "RTP_Packet::rtp_sendto() failed: %s\n", strerror(errno));
             return -1;
         }
-        //seq++;
         sentBytes += ret;
         pos += RTP_MAX_DATA_SIZE;
     }

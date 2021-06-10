@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-06-07 16:46:34
- * @LastEditTime: 2021-06-10 10:55:39
+ * @LastEditTime: 2021-06-10 16:31:15
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /rtsp/include/H264.h
@@ -33,8 +33,8 @@ class H264Parser
 {
 private:
     int fd = -1;
-    /*uint8_t *mappedFilePtr = nullptr, *curFilePtr = nullptr;
-    size_t fileSize = 0;*/
+    static bool isStartCode(const uint8_t *_buffer, const size_t _bufLen, const uint8_t startCodeType);
+    static uint8_t *findNextStartCode(uint8_t *_buffer, const size_t _bufLen);
 
 public:
     H264Parser(const char *filename);
