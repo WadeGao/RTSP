@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-06-07 16:46:34
- * @LastEditTime: 2021-06-10 09:00:03
+ * @LastEditTime: 2021-06-10 09:48:27
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /rtsp/src/rtp.cc
@@ -50,15 +50,16 @@ RTP_Header::RTP_Header(const uint16_t _seq, const uint32_t _timestamp, const uin
     this->ssrc = htonl(_ssrc);
 }
 
-RTP_Packet::RTP_Packet(const RTP_Header &rtpHeader) : header(rtpHeader), packetLen(RTP_HEADER_SIZE) { memcpy(this->RTP_Payload, rtpHeader.getHeader(), RTP_HEADER_SIZE); }
+RTP_Packet::RTP_Packet(const RTP_Header &rtpHeader) : header(rtpHeader) {}
 
-RTP_Packet::RTP_Packet(const RTP_Header &rtpHeader, const uint8_t *data, const size_t dataSize, const size_t bias) : header(rtpHeader), packetLen(RTP_HEADER_SIZE + dataSize + bias)
-{
-    memcpy(this->RTP_Payload, rtpHeader.getHeader(), RTP_HEADER_SIZE);
-    memcpy(this->RTP_Payload + RTP_HEADER_SIZE + bias, data, std::min(dataSize, RTP_MAX_DATA_SIZE - bias));
-}
+RTP_Packet::RTP_Packet(const RTP_Header &rtpHeader, const uint8_t *data, const size_t dataSize, const size_t bias) : header(rtpHeader) { memcpy(this->RTP_Payload + bias, data, std::min(dataSize, RTP_MAX_DATA_SIZE - bias)); }
 
-ssize_t RTP_Packet::rtp_sendto(int sockfd, int flags, const sockaddr *to)
+void RTP_Packet::loadData(const uint8_t *data, const size_t dataSize, const size_t bias) { memcpy(this->RTP_Payload + bias, data, std::min(dataSize, RTP_MAX_DATA_SIZE - bias)); }
+
+ssize_t RTP_Packet::rtp_sendto(int sockfd, const size_t _bufferLen, const int flags, const sockaddr *to, const uint32_t timeStampStep)
 {
-    return sendto(sockfd, this->getRealPacket(), this->getPacketLen(), flags, to, sizeof(sockaddr));
+    auto sentBytes = sendto(sockfd, this, _bufferLen, flags, to, sizeof(sockaddr));
+    this->header.setSeq(this->header.getSeq() + 1);
+    this->header.setTimestamp(this->header.getTimestamp() + timeStampStep);
+    return sentBytes;
 }

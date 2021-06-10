@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-06-07 16:46:34
- * @LastEditTime: 2021-06-09 16:11:20
+ * @LastEditTime: 2021-06-10 11:33:41
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /rtsp/include/rtp.h
@@ -23,6 +23,7 @@ constexpr size_t RTP_HEADER_SIZE = 12;
 constexpr size_t RTP_PAYLOAD_TYPE_H264 = 96;
 constexpr size_t FU_Size = 2;
 constexpr size_t RTP_MAX_DATA_SIZE = 1500 - 8 - 20 - RTP_HEADER_SIZE - FU_Size;
+//constexpr size_t RTP_MAX_DATA_SIZE = 1500 - 8 - 20 - RTP_HEADER_SIZE;
 constexpr size_t RTP_MAX_PACKET_LEN = RTP_MAX_DATA_SIZE + RTP_HEADER_SIZE + FU_Size;
 
 class RTP_Header
@@ -79,29 +80,28 @@ public:
     uint32_t getSSRC() const { return ntohl(this->ssrc); }
 };
 
+#pragma pack(1)
 class RTP_Packet
 {
 private:
     RTP_Header header;
-    size_t packetLen;
-    uint8_t RTP_Payload[RTP_MAX_PACKET_LEN]{0};
+    uint8_t RTP_Payload[RTP_MAX_DATA_SIZE + FU_Size]{0};
 
 public:
     RTP_Packet(const RTP_Header &rtpHeader);
     RTP_Packet(const RTP_Header &rtpHeader, const uint8_t *data, const size_t dataSize, const size_t bias = 0);
 
-    //void writeData(const uint8_t *data, const size_t dataSize, const size_t bias = 0);
+    void loadData(const uint8_t *data, const size_t dataSize, const size_t bias = 0);
 
     RTP_Packet(const RTP_Packet &) = default;
     ~RTP_Packet() = default;
 
-    const uint8_t *getRealPacket() const { return this->RTP_Payload; }
-    const size_t getPacketLen() const { return this->packetLen; }
-    uint8_t *getPayload() { return this->RTP_Payload + 12; }
+    uint8_t *getPayload() { return this->RTP_Payload; }
 
-    ssize_t rtp_sendto(int sockfd, int flags, const sockaddr *to);
+    ssize_t rtp_sendto(int sockfd, const size_t _bufferLen, const int flags, const sockaddr *to, const uint32_t timeStampStep);
 
     void setHeadertSeq(const uint32_t _seq) { this->header.setSeq(_seq); }
 
     const uint32_t getHeaderSeq() { return this->header.getSeq(); }
 };
+#pragma pack()

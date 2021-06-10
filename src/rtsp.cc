@@ -190,24 +190,25 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
 
             fprintf(stdout, "start send stream to %s:%d\n", IPv4, ntohs(clientSock.sin_port));
 
-            uint32_t tmpTimeStamp = 0;
-            const uint32_t step = uint32_t(90000 / fps);
-            RTP_Header rtpHeader(0, tmpTimeStamp, ssrcNum);
+            //uint32_t tmpTimeStamp = 0;
+            const uint32_t timeStampStep = uint32_t(90000 / fps);
+            const unsigned int sleepPeriod = 1000 * 1000 / fps;
+            RTP_Header rtpHeader(0, 0, ssrcNum);
+            RTP_Packet rtpPack{rtpHeader};
 
             while (true)
             {
-                auto ret = this->h264File.getOneFrame(frameBuffer, maxBufferSize);
-                if (ret < 0)
+                auto frameSize = this->h264File.getOneFrame(frameBuffer, maxBufferSize);
+                if (frameSize < 0)
                 {
                     fprintf(stderr, "RTSP::serveClient() H264::getOneFrame() failed\n");
                     break;
                 }
-                this->h264File.pushStream(rtpFD, rtpHeader, frameBuffer, ret, (sockaddr *)&clientSock);
-                tmpTimeStamp += step;
-                rtpHeader.setTimestamp(tmpTimeStamp);
-                usleep(1000 * 1000 / fps);
+                this->h264File.pushStream(rtpFD, rtpPack, frameBuffer, frameSize, (sockaddr *)&clientSock, timeStampStep);
+                usleep(sleepPeriod);
             }
             delete[] frameBuffer;
+            frameBuffer = nullptr;
             break;
         }
     }

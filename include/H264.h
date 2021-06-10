@@ -1,8 +1,8 @@
 /*
  * @Author: your name
  * @Date: 2021-06-07 16:46:34
- * @LastEditTime: 2021-06-09 14:58:51
- * @LastEditors: your name
+ * @LastEditTime: 2021-06-10 10:55:39
+ * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /rtsp/include/H264.h
  */
@@ -33,13 +33,13 @@ class H264Parser
 {
 private:
     int fd = -1;
-    uint8_t *mappedFilePtr = nullptr, *curFilePtr = nullptr;
-    size_t fileSize = 0;
+    /*uint8_t *mappedFilePtr = nullptr, *curFilePtr = nullptr;
+    size_t fileSize = 0;*/
 
 public:
     H264Parser(const char *filename);
     ~H264Parser();
 
     ssize_t getOneFrame(uint8_t *frameBuffer, const size_t bufferLen);
-    ssize_t pushStream(int sockfd, RTP_Header &rtpHeader, const uint8_t *data, const size_t dataSize, const sockaddr *to);
+    ssize_t pushStream(int sockfd, /*RTP_Header &rtpHeader*/ RTP_Packet &rtpPack, const uint8_t *data, const size_t dataSize, const sockaddr *to, const uint32_t timeStampStep);
 };
