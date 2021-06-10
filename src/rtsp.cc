@@ -30,7 +30,7 @@ int RTSP::Socket(int __domain, int __type, int __protocol)
 
 bool RTSP::Bind(int sockfd, const char *IP, const uint16_t port)
 {
-    sockaddr_in addr;
+    sockaddr_in addr{};
     bzero(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
@@ -45,7 +45,7 @@ bool RTSP::Bind(int sockfd, const char *IP, const uint16_t port)
 
 bool RTSP::rtspSockInit(int rtspSockfd, const char *IP, const uint16_t port, const size_t ListenQueue)
 {
-    if (this->Bind(rtspSockfd, IP, port) == false)
+    if (!RTSP::Bind(rtspSockfd, IP, port))
         return false;
 
     if (listen(rtspSockfd, ListenQueue) < 0)
@@ -58,21 +58,21 @@ bool RTSP::rtspSockInit(int rtspSockfd, const char *IP, const uint16_t port, con
 
 void RTSP::Start(const int ssrcNum, const char *sessionID, const int timeout, const float fps)
 {
-    this->servRtspSockfd = this->Socket(AF_INET, SOCK_STREAM);
-    if (this->rtspSockInit(this->servRtspSockfd, "0.0.0.0", SERVER_RTSP_PORT) == false)
+    this->servRtspSockfd = RTSP::Socket(AF_INET, SOCK_STREAM);
+    if (!RTSP::rtspSockInit(this->servRtspSockfd, "0.0.0.0", SERVER_RTSP_PORT))
     {
         fprintf(stderr, "failed to create RTSP socket: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-    this->servRtpSockfd = this->Socket(AF_INET, SOCK_DGRAM);
-    this->servRtcpSockfd = this->Socket(AF_INET, SOCK_DGRAM);
+    this->servRtpSockfd = RTSP::Socket(AF_INET, SOCK_DGRAM);
+    this->servRtcpSockfd = RTSP::Socket(AF_INET, SOCK_DGRAM);
 
-    if (this->Bind(this->servRtpSockfd, "0.0.0.0", SERVER_RTP_PORT) == false)
+    if (!RTSP::Bind(this->servRtpSockfd, "0.0.0.0", SERVER_RTP_PORT))
     {
         fprintf(stderr, "failed to create RTP socket: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-    if (this->Bind(this->servRtcpSockfd, "0.0.0.0", SERVER_RTCP_PORT) == false)
+    if (!RTSP::Bind(this->servRtcpSockfd, "0.0.0.0", SERVER_RTCP_PORT))
     {
         fprintf(stderr, "failed to create RTCP socket: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
@@ -82,7 +82,7 @@ void RTSP::Start(const int ssrcNum, const char *sessionID, const int timeout, co
 
     while (true)
     {
-        sockaddr_in cliAddr;
+        sockaddr_in cliAddr{};
         bzero(&cliAddr, sizeof(cliAddr));
         socklen_t addrLen = sizeof(cliAddr);
         auto cli_sockfd = accept(this->servRtspSockfd, reinterpret_cast<sockaddr *>(&cliAddr), &addrLen);
@@ -125,7 +125,7 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
         fprintf(stdout, "--------------- [C->S] --------------\n");
         fprintf(stdout, "%s", recvBuf);
 
-        char *bufferPtr = this->lineParser(recvBuf, line);
+        char *bufferPtr = RTSP::lineParser(recvBuf, line);
         /* 解析方法 */
         if (sscanf(line, "%s %s %s\r\n", method, url, version) != 3)
         {
@@ -133,7 +133,7 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
             break;
         }
         /* 解析序列号 */
-        bufferPtr = this->lineParser(bufferPtr, line);
+        bufferPtr = RTSP::lineParser(bufferPtr, line);
         if (sscanf(line, "CSeq: %d\r\n", &cseq) != 1)
         {
             fprintf(stdout, "RTSP::lineParser() parse seq error\n");
@@ -144,7 +144,7 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
         {
             while (true)
             {
-                bufferPtr = this->lineParser(bufferPtr, line);
+                bufferPtr = RTSP::lineParser(bufferPtr, line);
                 if (!strncmp(line, "Transport:", strlen("Transport:")))
                 {
                     sscanf(line, "Transport: RTP/AVP;unicast;client_port=%d-%d\r\n", &this->cliRtpPort, &this->cliRtcpPort);
@@ -154,13 +154,13 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
         }
 
         if (!strcmp(method, "OPTIONS"))
-            this->replyCmd_OPTIONS(sendBuf, sizeof(sendBuf), cseq);
+            RTSP::replyCmd_OPTIONS(sendBuf, sizeof(sendBuf), cseq);
         else if (!strcmp(method, "DESCRIBE"))
-            this->replyCmd_DESCRIBE(sendBuf, sizeof(sendBuf), cseq, url);
+            RTSP::replyCmd_DESCRIBE(sendBuf, sizeof(sendBuf), cseq, url);
         else if (!strcmp(method, "SETUP"))
-            this->replyCmd_SETUP(sendBuf, sizeof(sendBuf), cseq, this->cliRtpPort, ssrcNum, sessionID, timeout);
+            RTSP::replyCmd_SETUP(sendBuf, sizeof(sendBuf), cseq, this->cliRtpPort, ssrcNum, sessionID, timeout);
         else if (!strcmp(method, "PLAY"))
-            this->replyCmd_PLAY(sendBuf, sizeof(sendBuf), cseq, sessionID, timeout);
+            RTSP::replyCmd_PLAY(sendBuf, sizeof(sendBuf), cseq, sessionID, timeout);
         else
         {
             fprintf(stderr, "Parse method error\n");
@@ -182,7 +182,7 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
 
             auto frameBuffer = new uint8_t[maxBufferSize]{0};
 
-            struct sockaddr_in clientSock;
+            struct sockaddr_in clientSock{};
             bzero(&clientSock, sizeof(sockaddr_in));
             clientSock.sin_family = AF_INET;
             inet_pton(clientSock.sin_family, IPv4, &clientSock.sin_addr);
@@ -191,8 +191,8 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
             fprintf(stdout, "start send stream to %s:%d\n", IPv4, ntohs(clientSock.sin_port));
 
             //uint32_t tmpTimeStamp = 0;
-            const uint32_t timeStampStep = uint32_t(90000 / fps);
-            const unsigned int sleepPeriod = 1000 * 1000 / fps;
+            const auto timeStampStep = uint32_t(90000 / fps);
+            const auto sleepPeriod = uint32_t(1000 * 1000 / fps);
             RTP_Header rtpHeader(0, 0, ssrcNum);
             RTP_Packet rtpPack{rtpHeader};
 
@@ -204,7 +204,7 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
                     fprintf(stderr, "RTSP::serveClient() H264::getOneFrame() failed\n");
                     break;
                 }
-                this->h264File.pushStream(rtpFD, rtpPack, frameBuffer, frameSize, (sockaddr *)&clientSock, timeStampStep);
+                H264Parser::pushStream(rtpFD, rtpPack, frameBuffer, frameSize, (sockaddr *)&clientSock, timeStampStep);
                 usleep(sleepPeriod);
             }
             delete[] frameBuffer;

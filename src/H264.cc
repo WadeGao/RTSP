@@ -1,13 +1,15 @@
 #include "H264.h"
 
+/*
 const uint8_t startCode3[3] = {0, 0, 1};
 const uint8_t startCode4[4] = {0, 0, 0, 1};
+*/
 
 H264Parser::H264Parser(const char *filename)
 {
     auto h264FileDescriptor = open(filename, O_RDONLY);
     assert(h264FileDescriptor > 0);
-    struct stat fileMetaData;
+    struct stat fileMetaData{};
     if (fstat(h264FileDescriptor, &fileMetaData) < 0)
     {
         fprintf(stderr, "fstat() failed: %s\n", strerror(errno));
@@ -28,11 +30,9 @@ bool H264Parser::isStartCode(const uint8_t *_buffer, const size_t _bufLen, const
     case 3:
         assert(_bufLen >= 3);
         return ((_buffer[0] == 0x00) && (_buffer[1] == 0x00) && (_buffer[2] == 0x01));
-        break;
     case 4:
         assert(_bufLen >= 3);
         return ((_buffer[0] == 0x00) && (_buffer[1] == 0x00) && (_buffer[2] == 0x00) && (_buffer[3] == 0x01));
-        break;
     default:
         fprintf(stderr, "static H264Parser::isStartCode() failed: startCodeType error\n");
         break;
@@ -51,7 +51,7 @@ uint8_t *H264Parser::findNextStartCode(uint8_t *_buffer, const size_t _bufLen)
     return H264Parser::isStartCode(_buffer, 3, 3) ? _buffer : nullptr;
 }
 
-ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen)
+ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen) const
 {
     assert(this->fd > 0);
     auto readBytes = read(this->fd, frameBuffer, bufferLen);
@@ -68,7 +68,7 @@ ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen)
         fprintf(stderr, "H264Parser::getOneFrame() failed: startCode not find\n");
         return -1;
     }
-    const size_t frameSize = nextStartCode - frameBuffer;
+    const ssize_t frameSize = nextStartCode - frameBuffer;
     if (bufferLen < frameSize)
     {
         fprintf(stderr, "H264Parser::getOneFrame() failed: provided buffer can't hold one frame\n");

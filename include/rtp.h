@@ -1,11 +1,3 @@
-/*
- * @Author: your name
- * @Date: 2021-06-07 16:46:34
- * @LastEditTime: 2021-06-10 13:25:56
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
- * @FilePath: /rtsp/include/rtp.h
- */
 #pragma once
 
 #include <cstdint>
@@ -76,7 +68,7 @@ public:
     void setSeq(const uint32_t _seq) { this->seq = htons(_seq); }
     uint32_t getSeq() const { return ntohs(this->seq); }
 
-    void setSSRC(const uint32_t _SSRC) { this->ssrc = htonl(_SSRC); }
+    void setSSRC(const uint32_t SSRC) { this->ssrc = htonl(SSRC); }
     uint32_t getSSRC() const { return ntohl(this->ssrc); }
 };
 
@@ -88,20 +80,20 @@ private:
     uint8_t RTP_Payload[RTP_MAX_DATA_SIZE + FU_Size]{0};
 
 public:
-    RTP_Packet(const RTP_Header &rtpHeader);
+    explicit RTP_Packet(const RTP_Header &rtpHeader);
     //RTP_Packet(const RTP_Header &rtpHeader, const uint8_t *data, const size_t dataSize, const size_t bias = 0);
 
-    void loadData(const uint8_t *data, const size_t dataSize, const size_t bias = 0);
+    void loadData(const uint8_t *data, size_t dataSize, size_t bias = 0);
 
     RTP_Packet(const RTP_Packet &) = default;
     ~RTP_Packet() = default;
 
     uint8_t *getPayload() { return this->RTP_Payload; }
 
-    ssize_t rtp_sendto(int sockfd, const size_t _bufferLen, const int flags, const sockaddr *to, const uint32_t timeStampStep);
+    ssize_t rtp_sendto(int sockfd, size_t _bufferLen, int flags, const sockaddr *to, uint32_t timeStampStep);
 
     void setHeadertSeq(const uint32_t _seq) { this->header.setSeq(_seq); }
 
-    const uint32_t getHeaderSeq() { return this->header.getSeq(); }
+    uint32_t getHeaderSeq() { return this->header.getSeq(); }
 };
 #pragma pack()

@@ -1,11 +1,3 @@
-/*
- * @Author: your name
- * @Date: 2021-06-07 16:46:34
- * @LastEditTime: 2021-06-10 16:31:15
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
- * @FilePath: /rtsp/include/H264.h
- */
 #pragma once
 
 #include <cassert>
@@ -21,7 +13,7 @@
 
 #include "rtp.h"
 
-constexpr uint8_t NALU_F_MASK = 0x80;
+//constexpr uint8_t NALU_F_MASK = 0x80;
 constexpr uint8_t NALU_NRI_MASK = 0x60;
 constexpr uint8_t NALU_TYPE_MASK = 0x1F;
 
@@ -33,13 +25,13 @@ class H264Parser
 {
 private:
     int fd = -1;
-    static bool isStartCode(const uint8_t *_buffer, const size_t _bufLen, const uint8_t startCodeType);
-    static uint8_t *findNextStartCode(uint8_t *_buffer, const size_t _bufLen);
+    static bool isStartCode(const uint8_t *_buffer, size_t _bufLen, uint8_t startCodeType);
+    static uint8_t *findNextStartCode(uint8_t *_buffer, size_t _bufLen);
 
 public:
-    H264Parser(const char *filename);
+    explicit H264Parser(const char *filename);
     ~H264Parser();
 
-    ssize_t getOneFrame(uint8_t *frameBuffer, const size_t bufferLen);
-    ssize_t pushStream(int sockfd, /*RTP_Header &rtpHeader*/ RTP_Packet &rtpPack, const uint8_t *data, const size_t dataSize, const sockaddr *to, const uint32_t timeStampStep);
+    ssize_t getOneFrame(uint8_t *frameBuffer, size_t bufferLen) const;
+    static ssize_t pushStream(int sockfd, /*RTP_Header &rtpHeader*/ RTP_Packet &rtpPack, const uint8_t *data, size_t dataSize, const sockaddr *to, uint32_t timeStampStep);
 };

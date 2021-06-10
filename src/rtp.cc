@@ -1,11 +1,3 @@
-/*
- * @Author: your name
- * @Date: 2021-06-07 16:46:34
- * @LastEditTime: 2021-06-10 14:15:24
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
- * @FilePath: /rtsp/src/rtp.cc
- */
 #include "rtp.h"
 
 RTP_Header::RTP_Header(
