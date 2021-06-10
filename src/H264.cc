@@ -108,9 +108,14 @@ ssize_t H264Parser::pushStream(int sockfd, RTP_Header &rtpHeader, const uint8_t 
     const size_t packetNum = dataSize / RTP_MAX_DATA_SIZE;
     const size_t remainPacketSize = dataSize % RTP_MAX_DATA_SIZE;
     size_t pos = 1;
+    uint32_t CurTimeStamp = rtpHeader.getTimestamp();
+    uint32_t step = (90000 / 25);
+
     for (size_t i = 0; i < packetNum; i++)
     {
         rtpHeader.setSeq(seq++);
+        CurTimeStamp += step;
+        rtpHeader.setTimestamp(CurTimeStamp);
         RTP_Packet curPack(rtpHeader, data + pos, RTP_MAX_DATA_SIZE, FU_Size);
 
         auto payload = curPack.getPayload();
@@ -135,6 +140,8 @@ ssize_t H264Parser::pushStream(int sockfd, RTP_Header &rtpHeader, const uint8_t 
     if (remainPacketSize > 0)
     {
         rtpHeader.setSeq(seq++);
+        CurTimeStamp += step;
+        rtpHeader.setTimestamp(CurTimeStamp);
         RTP_Packet curPack(rtpHeader, data + pos, remainPacketSize, FU_Size);
 
         auto payload = curPack.getPayload();
