@@ -1,3 +1,11 @@
+/*
+ * @Author: your name
+ * @Date: 2021-06-10 21:21:44
+ * @LastEditTime: 2021-06-11 11:41:00
+ * @LastEditors: Please set LastEditors
+ * @Description: In User Settings Edit
+ * @FilePath: /rtsp/include/rtsp.h
+ */
 #pragma once
 #include <arpa/inet.h>
 #include <cassert>
@@ -6,11 +14,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-#include <fcntl.h>
 #include <iostream>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -21,7 +27,6 @@ constexpr uint16_t SERVER_RTSP_PORT = 8554;
 constexpr uint16_t SERVER_RTP_PORT = 12345;
 constexpr uint16_t SERVER_RTCP_PORT = SERVER_RTP_PORT + 1;
 constexpr size_t maxBufferSize = (1 << 21);
-//constexpr size_t maxFileNameLen = 128;
 
 class RTSP
 {
@@ -30,7 +35,7 @@ private:
     H264Parser h264File;
     int servRtspSockfd{-1}, servRtpSockfd{-1}, servRtcpSockfd{-1};
     int cliRtpPort{-1}, cliRtcpPort{-1};
-    static int Socket(int __domain, int __type, int __protocol = 0);
+    static int Socket(int domain, int type, int protocol = 0);
     static bool Bind(int sockfd, const char *IP, uint16_t port);
     static bool rtspSockInit(int rtspSockfd, const char *IP, uint16_t port, size_t ListenQueue = 5);
 

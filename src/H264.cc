@@ -1,20 +1,9 @@
 #include "H264.h"
 
-/*
-const uint8_t startCode3[3] = {0, 0, 1};
-const uint8_t startCode4[4] = {0, 0, 0, 1};
-*/
-
 H264Parser::H264Parser(const char *filename)
 {
     auto h264FileDescriptor = open(filename, O_RDONLY);
     assert(h264FileDescriptor > 0);
-    struct stat fileMetaData{};
-    if (fstat(h264FileDescriptor, &fileMetaData) < 0)
-    {
-        fprintf(stderr, "fstat() failed: %s\n", strerror(errno));
-        _exit(EXIT_FAILURE);
-    }
     this->fd = h264FileDescriptor;
 }
 
@@ -23,7 +12,7 @@ H264Parser::~H264Parser()
     assert(close(this->fd) == 0);
 }
 
-bool H264Parser::isStartCode(const uint8_t *_buffer, const size_t _bufLen, const uint8_t startCodeType)
+bool H264Parser::isStartCode(uint8_t *_buffer, const size_t _bufLen, const uint8_t startCodeType)
 {
     switch (startCodeType)
     {
@@ -31,7 +20,7 @@ bool H264Parser::isStartCode(const uint8_t *_buffer, const size_t _bufLen, const
         assert(_bufLen >= 3);
         return ((_buffer[0] == 0x00) && (_buffer[1] == 0x00) && (_buffer[2] == 0x01));
     case 4:
-        assert(_bufLen >= 3);
+        assert(_bufLen >= 4);
         return ((_buffer[0] == 0x00) && (_buffer[1] == 0x00) && (_buffer[2] == 0x00) && (_buffer[3] == 0x01));
     default:
         fprintf(stderr, "static H264Parser::isStartCode() failed: startCodeType error\n");
@@ -79,7 +68,7 @@ ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen) co
     return frameSize;
 }
 
-ssize_t H264Parser::pushStream(int sockfd, /*RTP_Header &rtpHeader*/ RTP_Packet &rtpPack, const uint8_t *data, const size_t dataSize, const sockaddr *to, const uint32_t timeStampStep)
+ssize_t H264Parser::pushStream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, const size_t dataSize, const sockaddr *to, const uint32_t timeStampStep)
 {
     const uint8_t naluHeader = data[0];
     if (dataSize <= RTP_MAX_PACKET_LEN)

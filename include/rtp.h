@@ -1,3 +1,11 @@
+/*
+ * @Author: your name
+ * @Date: 2021-06-10 21:21:44
+ * @LastEditTime: 2021-06-11 13:31:07
+ * @LastEditors: Please set LastEditors
+ * @Description: In User Settings Edit
+ * @FilePath: /rtsp/include/rtp.h
+ */
 #pragma once
 
 #include <cstdint>
@@ -18,6 +26,7 @@ constexpr size_t RTP_MAX_DATA_SIZE = 1500 - 8 - 20 - RTP_HEADER_SIZE - FU_Size;
 //constexpr size_t RTP_MAX_DATA_SIZE = 1500 - 8 - 20 - RTP_HEADER_SIZE;
 constexpr size_t RTP_MAX_PACKET_LEN = RTP_MAX_DATA_SIZE + RTP_HEADER_SIZE + FU_Size;
 
+#pragma pack(1)
 class RTP_Header
 {
 private:
@@ -59,7 +68,6 @@ public:
     RTP_Header(const RTP_Header &) = default;
     ~RTP_Header() = default;
 
-    //const uint8_t *getHeader() const { return this->header; }
     void *getHeader() const { return (void *)this; }
 
     void setTimestamp(const uint32_t _newtimestamp) { this->timestamp = htonl(_newtimestamp); }
@@ -72,7 +80,6 @@ public:
     uint32_t getSSRC() const { return ntohl(this->ssrc); }
 };
 
-#pragma pack(1)
 class RTP_Packet
 {
 private:
@@ -96,4 +103,5 @@ public:
 
     uint32_t getHeaderSeq() { return this->header.getSeq(); }
 };
+
 #pragma pack()
