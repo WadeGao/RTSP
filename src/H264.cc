@@ -71,7 +71,7 @@ ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen) co
 ssize_t H264Parser::pushStream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, const size_t dataSize, const sockaddr *to, const uint32_t timeStampStep)
 {
     const uint8_t naluHeader = data[0];
-    if (dataSize <= RTP_MAX_PACKET_LEN)
+    if (dataSize <= RTP_MAX_DATA_SIZE)
     {
         rtpPack.loadData(data, dataSize);
         auto ret = rtpPack.rtp_sendto(sockfd, dataSize + RTP_HEADER_SIZE, 0, to, timeStampStep);
@@ -88,12 +88,13 @@ ssize_t H264Parser::pushStream(int sockfd, RTP_Packet &rtpPack, const uint8_t *d
     for (size_t i = 0; i < packetNum; i++)
     {
         rtpPack.loadData(data + pos, RTP_MAX_DATA_SIZE, FU_Size);
-        payload[0] = (naluHeader & NALU_NRI_MASK) | SET_FU_A_MASK;
+        payload[0] = (naluHeader & NALU_F_NRI_MASK) | SET_FU_A_MASK;
         payload[1] = naluHeader & NALU_TYPE_MASK;
         if (!i)
             payload[1] |= FU_S_MASK;
         else if (i == packetNum - 1 && remainPacketSize == 0)
             payload[1] |= FU_E_MASK;
+
         auto ret = rtpPack.rtp_sendto(sockfd, RTP_MAX_PACKET_LEN, 0, to, timeStampStep);
         if (ret < 0)
         {
@@ -106,7 +107,7 @@ ssize_t H264Parser::pushStream(int sockfd, RTP_Packet &rtpPack, const uint8_t *d
     if (remainPacketSize > 0)
     {
         rtpPack.loadData(data + pos, remainPacketSize, FU_Size);
-        payload[0] = (naluHeader & NALU_NRI_MASK) | SET_FU_A_MASK;
+        payload[0] = (naluHeader & NALU_F_NRI_MASK) | SET_FU_A_MASK;
         payload[1] = (naluHeader & NALU_TYPE_MASK) | FU_E_MASK;
         auto ret = rtpPack.rtp_sendto(sockfd, remainPacketSize + RTP_HEADER_SIZE + FU_Size, 0, to, timeStampStep);
         if (ret < 0)

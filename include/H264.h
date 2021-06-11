@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-06-10 21:21:44
- * @LastEditTime: 2021-06-11 11:41:29
+ * @LastEditTime: 2021-06-11 14:37:38
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /rtsp/include/H264.h
@@ -21,6 +21,7 @@
 
 //constexpr uint8_t NALU_F_MASK = 0x80;
 constexpr uint8_t NALU_NRI_MASK = 0x60;
+constexpr uint8_t NALU_F_NRI_MASK = 0xe0;
 constexpr uint8_t NALU_TYPE_MASK = 0x1F;
 
 constexpr uint8_t FU_S_MASK = 0x80;
