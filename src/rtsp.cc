@@ -205,11 +205,18 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
             while (true)
             {
                 auto frameSize = this->h264File.getOneFrame(frameBuffer, maxBufferSize);
+
                 if (frameSize < 0)
                 {
                     fprintf(stderr, "RTSP::serveClient() H264::getOneFrame() failed\n");
                     break;
                 }
+                else if (!frameSize)
+                {
+                    fprintf(stdout, "Finish serving the user\n");
+                    return;
+                }
+
                 const ssize_t startCodeLen = H264Parser::isStartCode(frameBuffer, frameSize, 4) ? 4 : 3;
                 frameSize -= startCodeLen;
                 H264Parser::pushStream(rtpFD, rtpPack, frameBuffer + startCodeLen, frameSize, (sockaddr *)&clientSock, timeStampStep);

@@ -37,6 +37,7 @@ uint8_t *H264Parser::findNextStartCode(uint8_t *_buffer, const size_t _bufLen)
             return _buffer;
         ++_buffer;
     }
+    // return nullptr represents reaching the end of this video
     return H264Parser::isStartCode(_buffer, 3, 3) ? _buffer : nullptr;
 }
 
@@ -54,8 +55,8 @@ ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen) co
     const auto nextStartCode = H264Parser::findNextStartCode(frameBuffer + 3, readBytes - 3);
     if (!nextStartCode)
     {
-        fprintf(stderr, "H264Parser::getOneFrame() failed: startCode not find\n");
-        return -1;
+        //fprintf(stderr, "H264Parser::getOneFrame() Finished: Reach the end of this H264 video\n");
+        return 0;
     }
     const ssize_t frameSize = nextStartCode - frameBuffer;
     if (bufferLen < frameSize)
