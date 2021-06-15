@@ -31,7 +31,6 @@ constexpr size_t maxBufferSize = (1 << 21);
 class RTSP
 {
 private:
-    //char filename[maxFileNameLen]{0};
     H264Parser h264File;
     int servRtspSockfd{-1}, servRtpSockfd{-1}, servRtcpSockfd{-1};
     int cliRtpPort{-1}, cliRtcpPort{-1};
@@ -65,6 +64,7 @@ private:
         snprintf(buffer, bufferLen, "RTSP/1.0 200 OK\r\nCseq: %d\r\nContent-Base: %s\r\nContent-type: application/sdp\r\nContent-length: %ld\r\n\r\n%s", cseq, url, strlen(sdp), sdp);
     }
     static char *lineParser(char *src, char *line);
+
     void serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, int ssrcNum, const char *sessionID, int timeout, float fps);
 
 public:

@@ -41,5 +41,5 @@ public:
 
     static bool isStartCode(uint8_t *_buffer, size_t _bufLen, uint8_t startCodeType);
     ssize_t getOneFrame(uint8_t *frameBuffer, size_t bufferLen) const;
-    static ssize_t pushStream(int sockfd, /*RTP_Header &rtpHeader*/ RTP_Packet &rtpPack, const uint8_t *data, size_t dataSize, const sockaddr *to, uint32_t timeStampStep);
+    static ssize_t pushStream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, size_t dataSize, const sockaddr *to, uint32_t timeStampStep);
 };

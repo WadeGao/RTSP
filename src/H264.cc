@@ -7,10 +7,7 @@ H264Parser::H264Parser(const char *filename)
     this->fd = h264FileDescriptor;
 }
 
-H264Parser::~H264Parser()
-{
-    assert(close(this->fd) == 0);
-}
+H264Parser::~H264Parser() { assert(close(this->fd) == 0); }
 
 bool H264Parser::isStartCode(uint8_t *_buffer, const size_t _bufLen, const uint8_t startCodeType)
 {

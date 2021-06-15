@@ -18,8 +18,5 @@ int main(int argc, char *argv[])
     RTSP rtspServer(argv[1]);
     rtspServer.Start(19990825, "wadegao", 600, atof(argv[2]));
 
-    /*RTSP rtspServer("../DataSet/test.h264");
-    rtspServer.Start(66668899, "4bbbd85c8e", 600, 59.94);*/
     return 0;
 }
-//  /home/wade/Downloads/10M.h264
