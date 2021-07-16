@@ -7,21 +7,15 @@
  * @FilePath: /rtsp/include/rtsp.h
  */
 #pragma once
-#include <arpa/inet.h>
-#include <cassert>
-#include <cerrno>
-#include <cstdint>
-#include <cstdlib>
-#include <cstring>
-#include <ctime>
-#include <iostream>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
 
-#include "H264.h"
+#include <cstdint>
+#include <cstddef>
+#include <iostream>
+
+#include <arpa/inet.h>
+
 #include "rtp.h"
+#include "H264.h"
 
 constexpr uint16_t SERVER_RTSP_PORT = 8554;
 constexpr uint16_t SERVER_RTP_PORT = 12345;
@@ -67,6 +61,7 @@ private:
 
     void serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, int ssrcNum, const char *sessionID, int timeout, float fps);
 
+    static ssize_t pushStream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, size_t dataSize, const sockaddr *to, uint32_t timeStampStep);
 public:
     explicit RTSP(const char *filename);
     ~RTSP();

@@ -7,12 +7,14 @@
  * @FilePath: /rtsp/src/main.cc
  */
 #include "rtsp.h"
+#include <iostream>
+#include <cstdlib>
 
 int main(int argc, char *argv[])
 {
     if (argc != 3)
     {
-        fprintf(stdout, "usage: %s <file name> <fps>\n", basename(argv[0]));
+        fprintf(stdout, "usage: %s <file name> <fps>\n",argv[0]);
         return 1;
     }
     RTSP rtspServer(argv[1]);

@@ -1,4 +1,16 @@
 #include "H264.h"
+//#include "rtp.h"
+
+#include <cassert>
+#include <cstdint>
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
+#include <fcntl.h>
+#include <iostream>
+#include <sys/types.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 
 H264Parser::H264Parser(const char *filename)
 {
@@ -64,56 +76,4 @@ ssize_t H264Parser::getOneFrame(uint8_t *frameBuffer, const size_t bufferLen) co
 
     lseek(this->fd, frameSize - readBytes, SEEK_CUR);
     return frameSize;
-}
-
-ssize_t H264Parser::pushStream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, const size_t dataSize, const sockaddr *to, const uint32_t timeStampStep)
-{
-    const uint8_t naluHeader = data[0];
-    if (dataSize <= RTP_MAX_DATA_SIZE)
-    {
-        rtpPack.loadData(data, dataSize);
-        auto ret = rtpPack.rtp_sendto(sockfd, dataSize + RTP_HEADER_SIZE, 0, to, timeStampStep);
-        if (ret < 0)
-            fprintf(stderr, "RTP_Packet::rtp_sendto() failed: %s\n", strerror(errno));
-        return ret;
-    }
-
-    const size_t packetNum = dataSize / RTP_MAX_DATA_SIZE;
-    const size_t remainPacketSize = dataSize % RTP_MAX_DATA_SIZE;
-    size_t pos = 1;
-    ssize_t sentBytes = 0;
-    auto payload = rtpPack.getPayload();
-    for (size_t i = 0; i < packetNum; i++)
-    {
-        rtpPack.loadData(data + pos, RTP_MAX_DATA_SIZE, FU_Size);
-        payload[0] = (naluHeader & NALU_F_NRI_MASK) | SET_FU_A_MASK;
-        payload[1] = naluHeader & NALU_TYPE_MASK;
-        if (!i)
-            payload[1] |= FU_S_MASK;
-        else if (i == packetNum - 1 && remainPacketSize == 0)
-            payload[1] |= FU_E_MASK;
-
-        auto ret = rtpPack.rtp_sendto(sockfd, RTP_MAX_PACKET_LEN, 0, to, timeStampStep);
-        if (ret < 0)
-        {
-            fprintf(stderr, "RTP_Packet::rtp_sendto() failed: %s\n", strerror(errno));
-            return -1;
-        }
-        sentBytes += ret;
-        pos += RTP_MAX_DATA_SIZE;
-    }
-    if (remainPacketSize > 0)
-    {
-        rtpPack.loadData(data + pos, remainPacketSize, FU_Size);
-        payload[0] = (naluHeader & NALU_F_NRI_MASK) | SET_FU_A_MASK;
-        payload[1] = (naluHeader & NALU_TYPE_MASK) | FU_E_MASK;
-        auto ret = rtpPack.rtp_sendto(sockfd, remainPacketSize + RTP_HEADER_SIZE + FU_Size, 0, to, timeStampStep);
-        if (ret < 0)
-        {
-            fprintf(stderr, "RTP_Packet::rtp_sendto() failed: %s\n", strerror(errno));
-            return -1;
-        }
-        sentBytes += ret;
-    }
-    return sentBytes;
 }
