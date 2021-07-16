@@ -8,6 +8,15 @@
  */
 #include "rtp.h"
 
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <unistd.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
 RTP_Header::RTP_Header(
     //byte 0
     const uint8_t _version,

@@ -8,16 +8,9 @@
  */
 #pragma once
 
-#include <cassert>
-#include <cerrno>
-#include <cstdlib>
-#include <cstring>
-#include <fcntl.h>
-#include <iostream>
+#include <cstddef>
+#include <cstdint>
 #include <sys/types.h>
-#include <unistd.h>
-
-#include "rtp.h"
 
 //constexpr uint8_t NALU_F_MASK = 0x80;
 constexpr uint8_t NALU_NRI_MASK = 0x60;
@@ -41,5 +34,4 @@ public:
 
     static bool isStartCode(uint8_t *_buffer, size_t _bufLen, uint8_t startCodeType);
     ssize_t getOneFrame(uint8_t *frameBuffer, size_t bufferLen) const;
-    static ssize_t pushStream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, size_t dataSize, const sockaddr *to, uint32_t timeStampStep);
 };

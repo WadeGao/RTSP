@@ -9,14 +9,8 @@
 #pragma once
 
 #include <cstdint>
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
-#include <unistd.h>
-
+#include <cstddef>
 #include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 
 constexpr size_t RTP_VERSION = 2;
 constexpr size_t RTP_HEADER_SIZE = 12;

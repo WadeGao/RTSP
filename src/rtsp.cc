@@ -1,4 +1,19 @@
 #include "rtsp.h"
+#include "rtp.h"
+#include "H264.h"
+
+#include <cstdint>
+#include <arpa/inet.h>
+#include <cassert>
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+#include <iostream>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 RTSP::RTSP(const char *filename) : h264File(filename)
 {
@@ -186,9 +201,7 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
 
             auto frameBuffer = new uint8_t[maxBufferSize]{0};
 
-            struct sockaddr_in clientSock
-            {
-            };
+            struct sockaddr_in clientSock{};
             bzero(&clientSock, sizeof(sockaddr_in));
             clientSock.sin_family = AF_INET;
             inet_pton(clientSock.sin_family, IPv4, &clientSock.sin_addr);
@@ -219,7 +232,7 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
 
                 const ssize_t startCodeLen = H264Parser::isStartCode(frameBuffer, frameSize, 4) ? 4 : 3;
                 frameSize -= startCodeLen;
-                H264Parser::pushStream(rtpFD, rtpPack, frameBuffer + startCodeLen, frameSize, (sockaddr *)&clientSock, timeStampStep);
+                RTSP::pushStream(rtpFD, rtpPack, frameBuffer + startCodeLen, frameSize, (sockaddr *)&clientSock, timeStampStep);
                 usleep(sleepPeriod);
             }
             delete[] frameBuffer;
@@ -229,4 +242,56 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
     }
     fprintf(stdout, "finish\n");
     close(clientfd);
+}
+
+ssize_t RTSP::pushStream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, const size_t dataSize, const sockaddr *to, const uint32_t timeStampStep)
+{
+    const uint8_t naluHeader = data[0];
+    if (dataSize <= RTP_MAX_DATA_SIZE)
+    {
+        rtpPack.loadData(data, dataSize);
+        auto ret = rtpPack.rtp_sendto(sockfd, dataSize + RTP_HEADER_SIZE, 0, to, timeStampStep);
+        if (ret < 0)
+            fprintf(stderr, "RTP_Packet::rtp_sendto() failed: %s\n", strerror(errno));
+        return ret;
+    }
+
+    const size_t packetNum = dataSize / RTP_MAX_DATA_SIZE;
+    const size_t remainPacketSize = dataSize % RTP_MAX_DATA_SIZE;
+    size_t pos = 1;
+    ssize_t sentBytes = 0;
+    auto payload = rtpPack.getPayload();
+    for (size_t i = 0; i < packetNum; i++)
+    {
+        rtpPack.loadData(data + pos, RTP_MAX_DATA_SIZE, FU_Size);
+        payload[0] = (naluHeader & NALU_F_NRI_MASK) | SET_FU_A_MASK;
+        payload[1] = naluHeader & NALU_TYPE_MASK;
+        if (!i)
+            payload[1] |= FU_S_MASK;
+        else if (i == packetNum - 1 && remainPacketSize == 0)
+            payload[1] |= FU_E_MASK;
+
+        auto ret = rtpPack.rtp_sendto(sockfd, RTP_MAX_PACKET_LEN, 0, to, timeStampStep);
+        if (ret < 0)
+        {
+            fprintf(stderr, "RTP_Packet::rtp_sendto() failed: %s\n", strerror(errno));
+            return -1;
+        }
+        sentBytes += ret;
+        pos += RTP_MAX_DATA_SIZE;
+    }
+    if (remainPacketSize > 0)
+    {
+        rtpPack.loadData(data + pos, remainPacketSize, FU_Size);
+        payload[0] = (naluHeader & NALU_F_NRI_MASK) | SET_FU_A_MASK;
+        payload[1] = (naluHeader & NALU_TYPE_MASK) | FU_E_MASK;
+        auto ret = rtpPack.rtp_sendto(sockfd, remainPacketSize + RTP_HEADER_SIZE + FU_Size, 0, to, timeStampStep);
+        if (ret < 0)
+        {
+            fprintf(stderr, "RTP_Packet::rtp_sendto() failed: %s\n", strerror(errno));
+            return -1;
+        }
+        sentBytes += ret;
+    }
+    return sentBytes;
 }
