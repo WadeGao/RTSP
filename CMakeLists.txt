@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.4.1)
 project(rtspServer)
 
 set (CMAKE_CXX_STANDARD 11)
-set(CMAKE_BUILD_TYPE "Release" )
+set(CMAKE_BUILD_TYPE "Release")
 
 set(ROOT ${PROJECT_SOURCE_DIR})
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)

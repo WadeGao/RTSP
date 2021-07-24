@@ -11,12 +11,8 @@
 #include "rtp.h"
 #include "H264.h"
 
-#include <cstring>
 #include <cstdint>
 #include <cstddef>
-#include <iostream>
-
-#include <arpa/inet.h>
 
 constexpr uint16_t SERVER_RTSP_PORT = 8554;
 constexpr uint16_t SERVER_RTP_PORT = 12345;

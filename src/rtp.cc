@@ -13,9 +13,7 @@
 #include <cstring>
 #include <iostream>
 
-#include <unistd.h>
 #include <netinet/in.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
 
 RTP_Header::RTP_Header(
@@ -60,7 +58,19 @@ RTP_Header::RTP_Header(const uint16_t _seq, const uint32_t _timestamp, const uin
     this->ssrc = htonl(_ssrc);
 }
 
-RTP_Packet::RTP_Packet(const RTP_Header &rtpHeader) : header(rtpHeader) {}
+inline void RTP_Header::setTimeStamp(const uint32_t _newtimestamp) { this->timestamp = htonl(_newtimestamp); }
+inline void RTP_Header::setSSRC(const uint32_t SSRC) { this->ssrc = htonl(SSRC); }
+inline void RTP_Header::setSeq(const uint32_t _seq) { this->seq = htons(_seq); }
+
+inline void *RTP_Header::getHeader() const { return (void *)this; }
+inline uint32_t RTP_Header::getTimeStamp() const { return ntohl(this->timestamp); }
+inline uint32_t RTP_Header::getSeq() const { return ntohs(this->seq); }
+
+RTP_Packet::RTP_Packet(const RTP_Header &rtpHeader) : header(rtpHeader)
+{
+    this->cachedCurSeq = rtpHeader.getSeq();
+    this->cachedCurTimeStamp = rtpHeader.getTimeStamp();
+}
 
 void RTP_Packet::loadData(const uint8_t *data, const size_t dataSize, const size_t bias)
 {
@@ -72,7 +82,23 @@ void RTP_Packet::loadData(const uint8_t *data, const size_t dataSize, const size
 ssize_t RTP_Packet::rtp_sendto(int sockfd, const size_t _bufferLen, const int flags, const sockaddr *to, const uint32_t timeStampStep)
 {
     auto sentBytes = sendto(sockfd, this, _bufferLen, flags, to, sizeof(sockaddr));
-    this->header.setSeq(this->header.getSeq() + 1);
-    this->header.setTimestamp(this->header.getTimestamp() + timeStampStep);
+    this->setHeadertSeq(this->getHeaderSeq() + 1);
+    this->setHeaderTimeStamp(this->getHeaderTimeStamp() + timeStampStep);
     return sentBytes;
 }
+
+inline void RTP_Packet::setHeadertSeq(const uint32_t _seq)
+{
+    this->header.setSeq(_seq);
+    this->cachedCurSeq = _seq;
+}
+
+inline void RTP_Packet::setHeaderTimeStamp(const uint32_t _newtimestamp)
+{
+    this->header.setTimeStamp(_newtimestamp);
+    this->cachedCurTimeStamp = _newtimestamp;
+}
+
+//inline uint8_t *RTP_Packet::getPayload() { return reinterpret_cast<uint8_t *>(this->RTP_Payload); }
+inline uint32_t RTP_Packet::getHeaderSeq() { return this->cachedCurSeq; }
+inline uint32_t RTP_Packet::getHeaderTimeStamp() { return this->cachedCurTimeStamp; }

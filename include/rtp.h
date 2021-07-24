@@ -30,7 +30,6 @@ private:
     uint8_t extension : 1;
     uint8_t padding : 1;
     uint8_t version : 2;
-
     //byte 1
     uint8_t payloadType : 7;
     uint8_t marker : 1;
@@ -63,16 +62,13 @@ public:
     RTP_Header(const RTP_Header &) = default;
     ~RTP_Header() = default;
 
-    void *getHeader() const { return (void *)this; }
+    void setTimeStamp(const uint32_t _newtimestamp);
+    void setSSRC(const uint32_t SSRC);
+    void setSeq(const uint32_t _seq);
 
-    void setTimestamp(const uint32_t _newtimestamp) { this->timestamp = htonl(_newtimestamp); }
-    uint32_t getTimestamp() const { return ntohl(this->timestamp); }
-
-    void setSeq(const uint32_t _seq) { this->seq = htons(_seq); }
-    uint32_t getSeq() const { return ntohs(this->seq); }
-
-    void setSSRC(const uint32_t SSRC) { this->ssrc = htonl(SSRC); }
-    uint32_t getSSRC() const { return ntohl(this->ssrc); }
+    void *getHeader() const;
+    uint32_t getTimeStamp() const;
+    uint32_t getSeq() const;
 };
 
 class RTP_Packet
@@ -81,22 +77,25 @@ private:
     RTP_Header header;
     uint8_t RTP_Payload[RTP_MAX_DATA_SIZE + FU_Size]{0};
 
+    uint32_t cachedCurTimeStamp = 0;
+    uint16_t cachedCurSeq = 0;
+
 public:
     explicit RTP_Packet(const RTP_Header &rtpHeader);
-    //RTP_Packet(const RTP_Header &rtpHeader, const uint8_t *data, const size_t dataSize, const size_t bias = 0);
-
-    void loadData(const uint8_t *data, size_t dataSize, size_t bias = 0);
 
     RTP_Packet(const RTP_Packet &) = default;
     ~RTP_Packet() = default;
 
-    uint8_t *getPayload() { return this->RTP_Payload; }
-
+    void loadData(const uint8_t *data, size_t dataSize, size_t bias = 0);
     ssize_t rtp_sendto(int sockfd, size_t _bufferLen, int flags, const sockaddr *to, uint32_t timeStampStep);
 
-    void setHeadertSeq(const uint32_t _seq) { this->header.setSeq(_seq); }
+    void setHeadertSeq(const uint32_t _seq);
+    void setHeaderTimeStamp(const uint32_t _newtimestamp);
 
-    uint32_t getHeaderSeq() { return this->header.getSeq(); }
+    uint8_t *getPayload() { return this->RTP_Payload; }
+    //uint8_t *getPayload();
+    uint32_t getHeaderSeq();
+    uint32_t getHeaderTimeStamp();
 };
 
 #pragma pack()
