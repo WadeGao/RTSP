@@ -6,8 +6,9 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
-#include <fcntl.h>
 #include <iostream>
+
+#include <fcntl.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <arpa/inet.h>

@@ -16,10 +16,9 @@ include_directories(${ROOT}/include)
 #生成动态库.so文件，默认在lib文件夹中
 add_library(rtp SHARED ${ROOT}/src/rtp.cc)
 add_library(H264 SHARED ${ROOT}/src/H264.cc)
-#add_library(rtsp SHARED ${ROOT}/src/rtsp.cc)
 
 #添加可执行程序
-#add_executable(${PROJECT_NAME} ${ROOT}/src/main.cc)
+add_executable(${PROJECT_NAME} ${ROOT}/src/main.cc ${ROOT}/src/rtsp.cc)
 
 #连接，将动态库链接到可执行文件
-#target_link_libraries(${PROJECT_NAME} rtp H264)
+target_link_libraries(${PROJECT_NAME} rtp H264)
