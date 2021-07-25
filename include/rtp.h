@@ -17,7 +17,7 @@ constexpr size_t RTP_VERSION = 2;
 constexpr size_t RTP_HEADER_SIZE = 12;
 constexpr size_t RTP_PAYLOAD_TYPE_H264 = 96;
 constexpr size_t FU_Size = 2;
-constexpr size_t RTP_MAX_DATA_SIZE = 1500 - 8 - 20 - RTP_HEADER_SIZE - FU_Size;
+constexpr size_t RTP_MAX_DATA_SIZE = 10000 - 8 - 20 - RTP_HEADER_SIZE - FU_Size;
 //constexpr size_t RTP_MAX_DATA_SIZE = 1500 - 8 - 20 - RTP_HEADER_SIZE;
 constexpr size_t RTP_MAX_PACKET_LEN = RTP_MAX_DATA_SIZE + RTP_HEADER_SIZE + FU_Size;
 
