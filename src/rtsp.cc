@@ -42,6 +42,12 @@ int RTSP::Socket(int domain, int type, int protocol)
         fprintf(stderr, "setsockopt() failed: %s\n", strerror(errno));
         return -1;
     }
+    const int maxBUfferSize = 65535;
+    if(setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &maxBufferSize, sizeof(maxBufferSize)) < 0)
+    {
+	fprintf(stderr, "setsockopt() failed: %s\n", strerror(errno));
+	return -1;
+    }
     return sockfd;
 }
 
