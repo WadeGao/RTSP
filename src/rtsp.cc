@@ -3,7 +3,6 @@
 #include "H264.h"
 
 #include <cstdint>
-
 #include <cassert>
 #include <cerrno>
 #include <cstdlib>
@@ -42,11 +41,11 @@ int RTSP::Socket(int domain, int type, int protocol)
         fprintf(stderr, "setsockopt() failed: %s\n", strerror(errno));
         return -1;
     }
-    const int maxBUfferSize = 65535;
-    if(setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &maxBufferSize, sizeof(maxBufferSize)) < 0)
+    //const int maxBUfferSize = 65535;
+    if(setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &MAX_UDP_PACKET_SIZE, sizeof(MAX_UDP_PACKET_SIZE)) < 0)
     {
-	fprintf(stderr, "setsockopt() failed: %s\n", strerror(errno));
-	return -1;
+        fprintf(stderr, "setsockopt() failed: %s\n", strerror(errno));
+	      return -1;
     }
     return sockfd;
 }

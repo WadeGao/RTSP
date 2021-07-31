@@ -13,11 +13,12 @@
 
 #include <arpa/inet.h>
 
+constexpr size_t MAX_UDP_PACKET_SIZE = 65535;
 constexpr size_t RTP_VERSION = 2;
 constexpr size_t RTP_HEADER_SIZE = 12;
 constexpr size_t RTP_PAYLOAD_TYPE_H264 = 96;
 constexpr size_t FU_Size = 2;
-constexpr size_t RTP_MAX_DATA_SIZE = 65535 - 8 - 20 - RTP_HEADER_SIZE - FU_Size;
+constexpr size_t RTP_MAX_DATA_SIZE = MAX_UDP_PACKET_SIZE - 8 - 20 - RTP_HEADER_SIZE - FU_Size;
 //constexpr size_t RTP_MAX_DATA_SIZE = 1500 - 8 - 20 - RTP_HEADER_SIZE;
 constexpr size_t RTP_MAX_PACKET_LEN = RTP_MAX_DATA_SIZE + RTP_HEADER_SIZE + FU_Size;
 
