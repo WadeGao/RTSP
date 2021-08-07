@@ -1,10 +1,10 @@
 #include "rtsp.h"
-#include "rtp.h"
 #include "H264.h"
+#include "rtp.h"
 
-#include <cstdint>
 #include <cassert>
 #include <cerrno>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
@@ -16,15 +16,15 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-RTSP::RTSP(const char *filename) : h264File(filename)
+RTSP::RTSP(const char *filename) : h264_file(filename)
 {
 }
 
 RTSP::~RTSP()
 {
-    close(this->servRtcpSockfd);
-    close(this->servRtpSockfd);
-    close(this->servRtspSockfd);
+    close(this->server_rtcp_sock_fd);
+    close(this->server_rtp_sock_fd);
+    close(this->server_rtsp_sock_fd);
 }
 
 int RTSP::Socket(int domain, int type, int protocol)
@@ -41,11 +41,10 @@ int RTSP::Socket(int domain, int type, int protocol)
         fprintf(stderr, "setsockopt() failed: %s\n", strerror(errno));
         return -1;
     }
-    //const int maxBUfferSize = 65535;
-    if(setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &MAX_UDP_PACKET_SIZE, sizeof(MAX_UDP_PACKET_SIZE)) < 0)
+    if (setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &MAX_UDP_PACKET_SIZE, sizeof(MAX_UDP_PACKET_SIZE)) < 0)
     {
         fprintf(stderr, "setsockopt() failed: %s\n", strerror(errno));
-	      return -1;
+        return -1;
     }
     return sockfd;
 }
@@ -65,7 +64,7 @@ bool RTSP::Bind(int sockfd, const char *IP, const uint16_t port)
     return true;
 }
 
-bool RTSP::rtspSockInit(int rtspSockfd, const char *IP, const uint16_t port, const size_t ListenQueue)
+bool RTSP::rtsp_sock_init(int rtspSockfd, const char *IP, const uint16_t port, const int64_t ListenQueue)
 {
     if (!RTSP::Bind(rtspSockfd, IP, port))
         return false;
@@ -80,21 +79,21 @@ bool RTSP::rtspSockInit(int rtspSockfd, const char *IP, const uint16_t port, con
 
 void RTSP::Start(const int ssrcNum, const char *sessionID, const int timeout, const float fps)
 {
-    this->servRtspSockfd = RTSP::Socket(AF_INET, SOCK_STREAM);
-    if (!RTSP::rtspSockInit(this->servRtspSockfd, "0.0.0.0", SERVER_RTSP_PORT))
+    this->server_rtsp_sock_fd = RTSP::Socket(AF_INET, SOCK_STREAM);
+    if (!RTSP::rtsp_sock_init(this->server_rtsp_sock_fd, "0.0.0.0", SERVER_RTSP_PORT))
     {
         fprintf(stderr, "failed to create RTSP socket: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-    this->servRtpSockfd = RTSP::Socket(AF_INET, SOCK_DGRAM);
-    this->servRtcpSockfd = RTSP::Socket(AF_INET, SOCK_DGRAM);
+    this->server_rtp_sock_fd = RTSP::Socket(AF_INET, SOCK_DGRAM);
+    this->server_rtcp_sock_fd = RTSP::Socket(AF_INET, SOCK_DGRAM);
 
-    if (!RTSP::Bind(this->servRtpSockfd, "0.0.0.0", SERVER_RTP_PORT))
+    if (!RTSP::Bind(this->server_rtp_sock_fd, "0.0.0.0", SERVER_RTP_PORT))
     {
         fprintf(stderr, "failed to create RTP socket: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-    if (!RTSP::Bind(this->servRtcpSockfd, "0.0.0.0", SERVER_RTCP_PORT))
+    if (!RTSP::Bind(this->server_rtcp_sock_fd, "0.0.0.0", SERVER_RTCP_PORT))
     {
         fprintf(stderr, "failed to create RTCP socket: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
@@ -107,7 +106,7 @@ void RTSP::Start(const int ssrcNum, const char *sessionID, const int timeout, co
     sockaddr_in cliAddr{};
     bzero(&cliAddr, sizeof(cliAddr));
     socklen_t addrLen = sizeof(cliAddr);
-    auto cli_sockfd = accept(this->servRtspSockfd, reinterpret_cast<sockaddr *>(&cliAddr), &addrLen);
+    auto cli_sockfd = accept(this->server_rtsp_sock_fd, reinterpret_cast<sockaddr *>(&cliAddr), &addrLen);
     if (cli_sockfd < 0)
     {
         fprintf(stderr, "accept error(): %s\n", strerror(errno));
@@ -119,11 +118,11 @@ void RTSP::Start(const int ssrcNum, const char *sessionID, const int timeout, co
             "Connection from %s:%d\n",
             inet_ntop(AF_INET, &cliAddr.sin_addr, IPv4, sizeof(IPv4)),
             ntohs(cliAddr.sin_port));
-    this->serveClient(cli_sockfd, cliAddr, this->servRtpSockfd, ssrcNum, sessionID, timeout, fps);
+    this->serve_client(cli_sockfd, cliAddr, this->server_rtp_sock_fd, ssrcNum, sessionID, timeout, fps);
     //}
 }
 
-char *RTSP::lineParser(char *src, char *line)
+char *RTSP::line_parser(char *src, char *line)
 {
     while (*src != '\n')
         *(line++) = *(src++);
@@ -133,14 +132,14 @@ char *RTSP::lineParser(char *src, char *line)
     return (src + 1);
 }
 
-void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, const int ssrcNum, const char *sessionID, const int timeout, const float fps)
+void RTSP::serve_client(int clientfd, const sockaddr_in &cliAddr, int rtpFD, const int ssrcNum, const char *sessionID, const int timeout, const float fps)
 {
     char method[10]{0};
     char url[100]{0};
     char version[10]{0};
     char line[500]{0};
     int cseq;
-    size_t heartbeatCount = 0;
+    int64_t heartbeatCount = 0;
     char recvBuf[1024]{0}, sendBuf[1024]{0};
     while (true)
     {
@@ -151,18 +150,18 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
         fprintf(stdout, "--------------- [C->S] --------------\n");
         fprintf(stdout, "%s", recvBuf);
 
-        char *bufferPtr = RTSP::lineParser(recvBuf, line);
+        char *bufferPtr = RTSP::line_parser(recvBuf, line);
         /* 解析方法 */
         if (sscanf(line, "%s %s %s\r\n", method, url, version) != 3)
         {
-            fprintf(stdout, "RTSP::lineParser() parse method error\n");
+            fprintf(stdout, "RTSP::line_parser() parse method error\n");
             break;
         }
         /* 解析序列号 */
-        bufferPtr = RTSP::lineParser(bufferPtr, line);
+        bufferPtr = RTSP::line_parser(bufferPtr, line);
         if (sscanf(line, "CSeq: %d\r\n", &cseq) != 1)
         {
-            fprintf(stdout, "RTSP::lineParser() parse seq error\n");
+            fprintf(stdout, "RTSP::line_parser() parse seq error\n");
             break;
         }
         /* 如果是SETUP，那么就再解析client_port */
@@ -170,10 +169,10 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
         {
             while (true)
             {
-                bufferPtr = RTSP::lineParser(bufferPtr, line);
+                bufferPtr = RTSP::line_parser(bufferPtr, line);
                 if (!strncmp(line, "Transport:", strlen("Transport:")))
                 {
-                    sscanf(line, "Transport: RTP/AVP;unicast;client_port=%d-%d\r\n", &this->cliRtpPort, &this->cliRtcpPort);
+                    sscanf(line, "Transport: RTP/AVP;unicast;client_port=%d-%d\r\n", &this->client_rtp_port, &this->client_rtcp_port);
                     break;
                 }
             }
@@ -184,7 +183,7 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
         else if (!strcmp(method, "DESCRIBE"))
             RTSP::replyCmd_DESCRIBE(sendBuf, sizeof(sendBuf), cseq, url);
         else if (!strcmp(method, "SETUP"))
-            RTSP::replyCmd_SETUP(sendBuf, sizeof(sendBuf), cseq, this->cliRtpPort, ssrcNum, sessionID, timeout);
+            RTSP::replyCmd_SETUP(sendBuf, sizeof(sendBuf), cseq, this->client_rtp_port, ssrcNum, sessionID, timeout);
         else if (!strcmp(method, "PLAY"))
             RTSP::replyCmd_PLAY(sendBuf, sizeof(sendBuf), cseq, sessionID, timeout);
         else
@@ -197,7 +196,7 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
         fprintf(stdout, "%s", sendBuf);
         if (send(clientfd, sendBuf, strlen(sendBuf), 0) < 0)
         {
-            fprintf(stderr, "RTSP::serveClient() send() failed: %s\n", strerror(errno));
+            fprintf(stderr, "RTSP::serve_client() send() failed: %s\n", strerror(errno));
             break;
         }
 
@@ -206,15 +205,13 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
             char IPv4[16]{0};
             inet_ntop(AF_INET, &cliAddr.sin_addr, IPv4, sizeof(IPv4));
 
-            auto frameBuffer = new uint8_t[maxBufferSize]{0};
-
             struct sockaddr_in clientSock
             {
             };
             bzero(&clientSock, sizeof(sockaddr_in));
             clientSock.sin_family = AF_INET;
             inet_pton(clientSock.sin_family, IPv4, &clientSock.sin_addr);
-            clientSock.sin_port = htons(this->cliRtpPort);
+            clientSock.sin_port = htons(this->client_rtp_port);
 
             fprintf(stdout, "start send stream to %s:%d\n", IPv4, ntohs(clientSock.sin_port));
 
@@ -226,26 +223,25 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
 
             while (true)
             {
-                auto frameSize = this->h264File.getOneFrame(frameBuffer, maxBufferSize);
+                auto cur_frame = this->h264_file.get_next_frame();
+                const auto ptr_cur_frame = cur_frame.first;
+                const auto cur_frame_size = cur_frame.second;
 
-                if (frameSize < 0)
+                if (cur_frame_size < 0)
                 {
-                    fprintf(stderr, "RTSP::serveClient() H264::getOneFrame() failed\n");
+                    fprintf(stderr, "RTSP::serve_client() H264::getOneFrame() failed\n");
                     break;
                 }
-                else if (!frameSize)
+                else if (!cur_frame_size)
                 {
                     fprintf(stdout, "Finish serving the user\n");
                     return;
                 }
 
-                const ssize_t startCodeLen = H264Parser::isStartCode(frameBuffer, frameSize, 4) ? 4 : 3;
-                frameSize -= startCodeLen;
-                RTSP::pushStream(rtpFD, rtpPack, frameBuffer + startCodeLen, frameSize, (sockaddr *)&clientSock, timeStampStep);
+                const int64_t start_code_len = H264Parser::is_start_code(ptr_cur_frame, cur_frame_size, 4) ? 4 : 3;
+                RTSP::push_stream(rtpFD, rtpPack, ptr_cur_frame + start_code_len, cur_frame_size - start_code_len, (sockaddr *)&clientSock, timeStampStep);
                 usleep(sleepPeriod);
             }
-            delete[] frameBuffer;
-            frameBuffer = nullptr;
             break;
         }
     }
@@ -253,26 +249,26 @@ void RTSP::serveClient(int clientfd, const sockaddr_in &cliAddr, int rtpFD, cons
     close(clientfd);
 }
 
-ssize_t RTSP::pushStream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, const size_t dataSize, const sockaddr *to, const uint32_t timeStampStep)
+int64_t RTSP::push_stream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, const int64_t dataSize, const sockaddr *to, const uint32_t timeStampStep)
 {
     const uint8_t naluHeader = data[0];
     if (dataSize <= RTP_MAX_DATA_SIZE)
     {
-        rtpPack.loadData(data, dataSize);
+        rtpPack.load_data(data, dataSize);
         auto ret = rtpPack.rtp_sendto(sockfd, dataSize + RTP_HEADER_SIZE, 0, to, timeStampStep);
         if (ret < 0)
             fprintf(stderr, "RTP_Packet::rtp_sendto() failed: %s\n", strerror(errno));
         return ret;
     }
 
-    const size_t packetNum = dataSize / RTP_MAX_DATA_SIZE;
-    const size_t remainPacketSize = dataSize % RTP_MAX_DATA_SIZE;
-    size_t pos = 1;
-    ssize_t sentBytes = 0;
-    auto payload = rtpPack.getPayload();
-    for (size_t i = 0; i < packetNum; i++)
+    const int64_t packetNum = dataSize / RTP_MAX_DATA_SIZE;
+    const int64_t remainPacketSize = dataSize % RTP_MAX_DATA_SIZE;
+    int64_t pos = 1;
+    int64_t sentBytes = 0;
+    auto payload = rtpPack.get_payload();
+    for (int64_t i = 0; i < packetNum; i++)
     {
-        rtpPack.loadData(data + pos, RTP_MAX_DATA_SIZE, FU_Size);
+        rtpPack.load_data(data + pos, RTP_MAX_DATA_SIZE, FU_Size);
         payload[0] = (naluHeader & NALU_F_NRI_MASK) | SET_FU_A_MASK;
         payload[1] = naluHeader & NALU_TYPE_MASK;
         if (!i)
@@ -291,7 +287,7 @@ ssize_t RTSP::pushStream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, c
     }
     if (remainPacketSize > 0)
     {
-        rtpPack.loadData(data + pos, remainPacketSize, FU_Size);
+        rtpPack.load_data(data + pos, remainPacketSize, FU_Size);
         payload[0] = (naluHeader & NALU_F_NRI_MASK) | SET_FU_A_MASK;
         payload[1] = (naluHeader & NALU_TYPE_MASK) | FU_E_MASK;
         auto ret = rtpPack.rtp_sendto(sockfd, remainPacketSize + RTP_HEADER_SIZE + FU_Size, 0, to, timeStampStep);
@@ -305,28 +301,28 @@ ssize_t RTSP::pushStream(int sockfd, RTP_Packet &rtpPack, const uint8_t *data, c
     return sentBytes;
 }
 
-void RTSP::replyCmd_OPTIONS(char *buffer, const size_t bufferLen, const int cseq)
+void RTSP::replyCmd_OPTIONS(char *buffer, const int64_t bufferLen, const int cseq)
 {
     snprintf(buffer, bufferLen, "RTSP/1.0 200 OK\r\nCseq: %d\r\nPublic: OPTIONS, DESCRIBE, SETUP, PLAY\r\n\r\n", cseq);
 }
 
-void RTSP::replyCmd_SETUP(char *buffer, const size_t bufferLen, const int cseq, const int clientRTP_Port, const int ssrcNum, const char *sessionID, const int timeout)
+void RTSP::replyCmd_SETUP(char *buffer, const int64_t bufferLen, const int cseq, const int clientRTP_Port, const int ssrcNum, const char *sessionID, const int timeout)
 {
     snprintf(buffer, bufferLen, "RTSP/1.0 200 OK\r\nCseq: %d\r\nTransport: RTP/AVP;unicast;client_port=%d-%d;server_port=%d-%d;ssrc=%d;mode=play\r\nSession: %s; timeout=%d\r\n\r\n",
              cseq, clientRTP_Port, clientRTP_Port + 1, SERVER_RTP_PORT, SERVER_RTCP_PORT, ssrcNum, sessionID, timeout);
 }
 
-void RTSP::replyCmd_PLAY(char *buffer, const size_t bufferLen, const int cseq, const char *sessionID, const int timeout)
+void RTSP::replyCmd_PLAY(char *buffer, const int64_t bufferLen, const int cseq, const char *sessionID, const int timeout)
 {
     snprintf(buffer, bufferLen, "RTSP/1.0 200 OK\r\nCseq: %d\r\nRange: npt=0.000-\r\nSession: %s; timeout=%d\r\n\r\n", cseq, sessionID, timeout);
 }
 
-void RTSP::replyCmd_HEARTBEAT(char *buffer, const size_t bufferLen, const int cseq, const char *sessionID)
+void RTSP::replyCmd_HEARTBEAT(char *buffer, const int64_t bufferLen, const int cseq, const char *sessionID)
 {
     snprintf(buffer, bufferLen, "RTSP/1.0 200 OK\r\nCseq: %d\r\nRange: npt=0.000-\r\nHeartbeat: %s; \r\n\r\n", cseq, sessionID);
 }
 
-void RTSP::replyCmd_DESCRIBE(char *buffer, const size_t bufferLen, const int cseq, const char *url)
+void RTSP::replyCmd_DESCRIBE(char *buffer, const int64_t bufferLen, const int cseq, const char *url)
 {
     char ip[100]{0};
     char sdp[500]{0};

@@ -1,8 +1,8 @@
 /*
  * @Author: your name
  * @Date: 2021-06-07 16:46:34
- * @LastEditTime: 2021-06-11 13:48:01
- * @LastEditors: Please set LastEditors
+ * @LastEditTime: 2021-08-07 11:30:35
+ * @LastEditors: Wade
  * @Description: In User Settings Edit
  * @FilePath: /rtsp/src/rtp.cc
  */
@@ -13,8 +13,8 @@
 #include <cstring>
 #include <iostream>
 
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 
 RTP_Header::RTP_Header(
     //byte 0
@@ -58,47 +58,47 @@ RTP_Header::RTP_Header(const uint16_t _seq, const uint32_t _timestamp, const uin
     this->ssrc = htonl(_ssrc);
 }
 
-inline void RTP_Header::setTimeStamp(const uint32_t _newtimestamp) { this->timestamp = htonl(_newtimestamp); }
-inline void RTP_Header::setSSRC(const uint32_t SSRC) { this->ssrc = htonl(SSRC); }
-inline void RTP_Header::setSeq(const uint32_t _seq) { this->seq = htons(_seq); }
+inline void RTP_Header::set_timestamp(const uint32_t _newtimestamp) { this->timestamp = htonl(_newtimestamp); }
+inline void RTP_Header::set_ssrc(const uint32_t SSRC) { this->ssrc = htonl(SSRC); }
+inline void RTP_Header::set_seq(const uint32_t _seq) { this->seq = htons(_seq); }
 
-inline void *RTP_Header::getHeader() const { return (void *)this; }
-inline uint32_t RTP_Header::getTimeStamp() const { return ntohl(this->timestamp); }
-inline uint32_t RTP_Header::getSeq() const { return ntohs(this->seq); }
+inline void *RTP_Header::get_header() const { return (void *)this; }
+inline uint32_t RTP_Header::get_timestamp() const { return ntohl(this->timestamp); }
+inline uint32_t RTP_Header::get_seq() const { return ntohs(this->seq); }
 
 RTP_Packet::RTP_Packet(const RTP_Header &rtpHeader) : header(rtpHeader)
 {
-    this->cachedCurSeq = rtpHeader.getSeq();
-    this->cachedCurTimeStamp = rtpHeader.getTimeStamp();
+    this->cached_cur_seq = rtpHeader.get_seq();
+    this->cached_cur_timestamp = rtpHeader.get_timestamp();
 }
 
-void RTP_Packet::loadData(const uint8_t *data, const size_t dataSize, const size_t bias)
+void RTP_Packet::load_data(const uint8_t *data, const int64_t dataSize, const int64_t bias)
 {
     //TODO:就是这里，气死我了，取min的，原先是RTP_MAX_DATA_SIZE，但是数组的大小是RTP_MAX_DATA_SIZE + FU_Size
     //     所以就会发生数据截断咯，直接用sizeof(this->RTP_Payload)不香吗???
-    memcpy(this->RTP_Payload + bias, data, std::min(dataSize, sizeof(this->RTP_Payload) - bias));
+    memcpy(this->RTP_Payload + bias, data, std::min(dataSize, static_cast<int64_t>(sizeof(this->RTP_Payload) - bias)));
 }
 
-ssize_t RTP_Packet::rtp_sendto(int sockfd, const size_t _bufferLen, const int flags, const sockaddr *to, const uint32_t timeStampStep)
+int64_t RTP_Packet::rtp_sendto(int sockfd, const int64_t _bufferLen, const int flags, const sockaddr *to, const uint32_t timeStampStep)
 {
     auto sentBytes = sendto(sockfd, this, _bufferLen, flags, to, sizeof(sockaddr));
-    this->setHeadertSeq(this->getHeaderSeq() + 1);
-    this->setHeaderTimeStamp(this->getHeaderTimeStamp() + timeStampStep);
+    this->set_header_seq(this->get_header_seq() + 1);
+    this->set_header_timestamp(this->get_header_timestamp() + timeStampStep);
     return sentBytes;
 }
 
-inline void RTP_Packet::setHeadertSeq(const uint32_t _seq)
+inline void RTP_Packet::set_header_seq(const uint32_t _seq)
 {
-    this->header.setSeq(_seq);
-    this->cachedCurSeq = _seq;
+    this->header.set_seq(_seq);
+    this->cached_cur_seq = _seq;
 }
 
-inline void RTP_Packet::setHeaderTimeStamp(const uint32_t _newtimestamp)
+inline void RTP_Packet::set_header_timestamp(const uint32_t _newtimestamp)
 {
-    this->header.setTimeStamp(_newtimestamp);
-    this->cachedCurTimeStamp = _newtimestamp;
+    this->header.set_timestamp(_newtimestamp);
+    this->cached_cur_timestamp = _newtimestamp;
 }
 
-//inline uint8_t *RTP_Packet::getPayload() { return reinterpret_cast<uint8_t *>(this->RTP_Payload); }
-inline uint32_t RTP_Packet::getHeaderSeq() { return this->cachedCurSeq; }
-inline uint32_t RTP_Packet::getHeaderTimeStamp() { return this->cachedCurTimeStamp; }
+//inline uint8_t *RTP_Packet::get_payload() { return reinterpret_cast<uint8_t *>(this->RTP_Payload); }
+inline uint32_t RTP_Packet::get_header_seq() { return this->cached_cur_seq; }
+inline uint32_t RTP_Packet::get_header_timestamp() { return this->cached_cur_timestamp; }

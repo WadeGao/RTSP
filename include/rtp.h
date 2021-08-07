@@ -1,26 +1,25 @@
 /*
  * @Author: your name
  * @Date: 2021-06-10 21:21:44
- * @LastEditTime: 2021-06-11 15:03:01
- * @LastEditors: Please set LastEditors
+ * @LastEditTime: 2021-08-07 11:30:31
+ * @LastEditors: Wade
  * @Description: In User Settings Edit
  * @FilePath: /rtsp/include/rtp.h
  */
 #pragma once
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 #include <arpa/inet.h>
 
-constexpr size_t MAX_UDP_PACKET_SIZE = 65535;
-constexpr size_t RTP_VERSION = 2;
-constexpr size_t RTP_HEADER_SIZE = 12;
-constexpr size_t RTP_PAYLOAD_TYPE_H264 = 96;
-constexpr size_t FU_Size = 2;
-constexpr size_t RTP_MAX_DATA_SIZE = MAX_UDP_PACKET_SIZE - 8 - 20 - RTP_HEADER_SIZE - FU_Size;
-//constexpr size_t RTP_MAX_DATA_SIZE = 1500 - 8 - 20 - RTP_HEADER_SIZE;
-constexpr size_t RTP_MAX_PACKET_LEN = RTP_MAX_DATA_SIZE + RTP_HEADER_SIZE + FU_Size;
+constexpr int64_t MAX_UDP_PACKET_SIZE = 65535;
+constexpr int64_t RTP_VERSION = 2;
+constexpr int64_t RTP_HEADER_SIZE = 12;
+constexpr int64_t RTP_PAYLOAD_TYPE_H264 = 96;
+constexpr int64_t FU_Size = 2;
+constexpr int64_t RTP_MAX_DATA_SIZE = MAX_UDP_PACKET_SIZE - 8 - 20 - RTP_HEADER_SIZE - FU_Size;
+constexpr int64_t RTP_MAX_PACKET_LEN = RTP_MAX_DATA_SIZE + RTP_HEADER_SIZE + FU_Size;
 
 #pragma pack(1)
 class RTP_Header
@@ -63,13 +62,13 @@ public:
     RTP_Header(const RTP_Header &) = default;
     ~RTP_Header() = default;
 
-    void setTimeStamp(const uint32_t _newtimestamp);
-    void setSSRC(const uint32_t SSRC);
-    void setSeq(const uint32_t _seq);
+    void set_timestamp(const uint32_t _newtimestamp);
+    void set_ssrc(const uint32_t SSRC);
+    void set_seq(const uint32_t _seq);
 
-    void *getHeader() const;
-    uint32_t getTimeStamp() const;
-    uint32_t getSeq() const;
+    void *get_header() const;
+    uint32_t get_timestamp() const;
+    uint32_t get_seq() const;
 };
 
 class RTP_Packet
@@ -78,8 +77,8 @@ private:
     RTP_Header header;
     uint8_t RTP_Payload[RTP_MAX_DATA_SIZE + FU_Size]{0};
 
-    uint32_t cachedCurTimeStamp = 0;
-    uint16_t cachedCurSeq = 0;
+    uint32_t cached_cur_timestamp = 0;
+    uint16_t cached_cur_seq = 0;
 
 public:
     explicit RTP_Packet(const RTP_Header &rtpHeader);
@@ -87,16 +86,15 @@ public:
     RTP_Packet(const RTP_Packet &) = default;
     ~RTP_Packet() = default;
 
-    void loadData(const uint8_t *data, size_t dataSize, size_t bias = 0);
-    ssize_t rtp_sendto(int sockfd, size_t _bufferLen, int flags, const sockaddr *to, uint32_t timeStampStep);
+    void load_data(const uint8_t *data, int64_t dataSize, int64_t bias = 0);
+    int64_t rtp_sendto(int sockfd, int64_t _bufferLen, int flags, const sockaddr *to, uint32_t timeStampStep);
 
-    void setHeadertSeq(const uint32_t _seq);
-    void setHeaderTimeStamp(const uint32_t _newtimestamp);
+    void set_header_seq(const uint32_t _seq);
+    void set_header_timestamp(const uint32_t _newtimestamp);
 
-    uint8_t *getPayload() { return this->RTP_Payload; }
-    //uint8_t *getPayload();
-    uint32_t getHeaderSeq();
-    uint32_t getHeaderTimeStamp();
+    uint8_t *get_payload() { return this->RTP_Payload; }
+    uint32_t get_header_seq();
+    uint32_t get_header_timestamp();
 };
 
 #pragma pack()
